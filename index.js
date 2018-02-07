@@ -1,9 +1,13 @@
 const Discord = require('discord.js') //https://discord.js.org/#/docs/main/stable/general/welcome
 const fs = require('fs')
 const Markov = require('markov-strings')
+const uniqueBy = require('unique-by');
+const schedule = require('node-schedule');
 const client = new Discord.Client()
 const ZEROWIDTH_SPACE = String.fromCharCode(parseInt('200B', 16))
 const MAXMESSAGELENGTH = 2000
+
+
 
 let guilds = []
 let connected = -1
@@ -16,10 +20,8 @@ let commands = {}
 let aliases = {}
 let errors = []
 
-let lastSeenMessageID = null
 let fileObj = {
-  messages: [],
-  lastSeenMessageID: null
+  messages: []
 }
 
 let markovDB = []
@@ -27,7 +29,7 @@ let messageCache = []
 const markovOpts = {
   maxLength: 400,
   minWords: 3,
-  minScore: 5
+  minScore: 10
 }
 let markov = new Markov(markovDB, markovOpts);
 
@@ -40,12 +42,13 @@ function regenMarkov() {
   // console.log("MessageCache", messageCache)
   markovDB = fileObj.messages
   if (markovDB.length == 0)
-    markovDB.push("hello")
-  markovDB = markovDB.concat(messageCache)
+    markovDB.push({ string: 'hello', id: null })
+  //markovDB = uniqueArray(markovDB.concat(messageCache), 'id')
+  markovDB = uniqueBy(markovDB.concat(messageCache), 'id')
+  //markovDB = markovDB.concat(messageCache)
   markov = new Markov(markovDB, markovOpts);
   markov.buildCorpusSync()
   fileObj.messages = markovDB
-  fileObj.lastSeenMessageID = lastSeenMessageID
   // console.log("WRITING THE FOLLOWING DATA:")
   // console.log(fileObj)
   fs.writeFileSync('markovDB.json', JSON.stringify(fileObj), 'utf-8')
@@ -63,6 +66,7 @@ function loadConfig() {
     GAME = cfg.game
     BOTDESC = cfg.description
     inviteCmd = cfg.invitecmd
+    //regenMarkov()
     client.login(cfg.token)
   }
   else {
@@ -72,9 +76,7 @@ function loadConfig() {
 
 client.on('ready', () => {
   console.log('Markbot by Charlie Laabs')
-  try { lastSeenMessageID = JSON.parse(fs.readFileSync('markovDB.json', 'utf8')).lastSeenMessageID }
-  catch (err) { console.log(err) }
-  regenMarkov()
+  client.user.setActivity(GAME)
 })
 
 client.on('error', (err) => {
@@ -90,18 +92,23 @@ client.on('error', (err) => {
 client.on('message', message => {
   if (message.guild) {
     let command = validateMessage(message)
-    // if (command === 'help') {
-    //   I should probably add a help message sometime
-    // }
+    if (command === 'help') {
+      let richem = new Discord.RichEmbed()
+        .setAuthor(client.user.username, client.user.avatarURL)
+        .setThumbnail(client.user.avatarURL)
+        .setDescription('A Markov chain chatbot that speaks based on previous chat input.')
+        .addField('!mark', 'Generates a sentence to say based on the chat database')
+        .addField('!mark train', 'Fetches the maximum amount of previous messages in the current text channel, adds it to the database, and regenerates the corpus. Takes about 2 minutes.')
+        .addField('!mark regen', 'Manually regenerates the corpus to add recent chat info. Run this before shutting down to avoid any data loss. This automatically runs at midnight.')
+        .addField('!mark invite', 'Don\'t invite this bot to other servers. The database is shared between all servers and text channels.')
+      message.channel.send(richem)
+        .catch(reason => {
+          message.author.send(richem)
+        })
+    }
     if (command === 'train') {
       console.log("Training...")
-      message.channel.fetchMessages({ after: lastSeenMessageID, limit: 100 })
-        .then(messages => {
-          messages.forEach(value => {
-            messageCache.push(value.content)
-          })
-          regenMarkov()
-        }).catch(console.error)
+      fetchMessageChunk(message, null, [])
     }
     if (command === 'respond') {
       console.log("Responding...")
@@ -121,7 +128,9 @@ client.on('message', message => {
     }
     if (command === null) {
       console.log("Listening...")
-      messageCache.push(message.content)
+      if (!message.author.bot) {
+        messageCache.push({ string: message.content, id: message.id })
+      }
     }
     if (command === inviteCmd) {
       let richem = new Discord.RichEmbed()
@@ -134,7 +143,6 @@ client.on('message', message => {
           message.author.send(richem)
         })
     }
-    lastSeenMessageID = message.id
   }
 })
 
@@ -158,4 +166,21 @@ function validateMessage(message) {
   return command
 }
 
+function fetchMessageChunk(message, oldestMessageID, historyCache) {
+  message.channel.fetchMessages({ before: oldestMessageID, limit: 100 })
+    .then(messages => {
+      historyCache = historyCache.concat(messages.filter(elem => !elem.author.bot).map(elem => {
+        return { string: elem.content, id: elem.id }
+      }));
+      oldestMessageID = messages.last().id
+      return historyCache.concat(fetchMessageChunk(message, oldestMessageID, historyCache))
+    }).catch(err => {
+      console.log("Trained from " + historyCache.length + " past messages.")
+      messageCache = messageCache.concat(historyCache)
+      regenMarkov()
+      message.reply('Finished training from past ' + historyCache.length + ' messages.')
+    });
+}
+
 loadConfig()
+const daily = schedule.scheduleJob('0 0 * * *', regenMarkov());

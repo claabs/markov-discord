@@ -64,3 +64,4 @@ typings/
 config.json
 # error output file
 error.json
+markovDB.json

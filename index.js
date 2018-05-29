@@ -26,12 +26,14 @@ let fileObj = {
 
 let markovDB = []
 let messageCache = []
+let deletionCache = []
 const markovOpts = {
   maxLength: 400,
   minWords: 3,
   minScore: 10
 }
-let markov = new Markov(markovDB, markovOpts);
+let markov
+// let markov = new Markov(markovDB, markovOpts);
 
 function regenMarkov() {
   console.log("Regenerating Markov corpus...")
@@ -41,11 +43,15 @@ function regenMarkov() {
   catch (err) { console.log(err) }
   // console.log("MessageCache", messageCache)
   markovDB = fileObj.messages
+  markovDB = uniqueBy(markovDB.concat(messageCache), 'id')
+  deletionCache.forEach(id => {
+    let removeIndex = markovDB.map(function (item) { return item.id; }).indexOf(id)
+    // console.log('Remove Index:', removeIndex)
+    markovDB.splice(removeIndex, 1)
+  })
+  deletionCache = []
   if (markovDB.length == 0)
     markovDB.push({ string: 'hello', id: null })
-  //markovDB = uniqueArray(markovDB.concat(messageCache), 'id')
-  markovDB = uniqueBy(markovDB.concat(messageCache), 'id')
-  //markovDB = markovDB.concat(messageCache)
   markov = new Markov(markovDB, markovOpts);
   markov.buildCorpusSync()
   fileObj.messages = markovDB
@@ -53,7 +59,7 @@ function regenMarkov() {
   // console.log(fileObj)
   fs.writeFileSync('markovDB.json', JSON.stringify(fileObj), 'utf-8')
   fileObj = null;
-  markovDB = []
+  // markovDB = []
   messageCache = []
   console.log("Done regenerating Markov corpus.")
 }
@@ -97,7 +103,7 @@ client.on('message', message => {
         .setAuthor(client.user.username, client.user.avatarURL)
         .setThumbnail(client.user.avatarURL)
         .setDescription('A Markov chain chatbot that speaks based on previous chat input.')
-        .addField('!mark', 'Generates a sentence to say based on the chat database')
+        .addField('!mark', 'Generates a sentence to say based on the chat database. Send your message as TTS to recieve it as TTS.')
         .addField('!mark train', 'Fetches the maximum amount of previous messages in the current text channel, adds it to the database, and regenerates the corpus. Takes about 2 minutes.')
         .addField('!mark regen', 'Manually regenerates the corpus to add recent chat info. Run this before shutting down to avoid any data loss. This automatically runs at midnight.')
         .addField('!mark invite', 'Don\'t invite this bot to other servers. The database is shared between all servers and text channels.')
@@ -108,13 +114,27 @@ client.on('message', message => {
     }
     if (command === 'train') {
       console.log("Training...")
+      fileObj = {
+        messages: []
+      }
+      fs.writeFileSync('markovDB.json', JSON.stringify(fileObj), 'utf-8')
       fetchMessageChunk(message, null, [])
     }
     if (command === 'respond') {
       console.log("Responding...")
       markov.generateSentence().then(result => {
-        console.log(result)
-        message.channel.send(result.string)
+        console.log('Generated Result:', result)
+        let messageOpts = {
+          tts: message.tts
+        }
+        let randomMessage = markovDB[Math.floor(Math.random() * markovDB.length)]
+        console.log('Random Message:', randomMessage)
+        if (randomMessage.hasOwnProperty('attachment')) {
+          messageOpts.files = [{
+            attachment: randomMessage.attachment
+          }]
+        }
+        message.channel.send(result.string, messageOpts)
       }).catch(err => {
         console.log(err)
         if (err.message == 'Cannot build sentence with current corpus and options')
@@ -129,7 +149,14 @@ client.on('message', message => {
     if (command === null) {
       console.log("Listening...")
       if (!message.author.bot) {
-        messageCache.push({ string: message.content, id: message.id })
+        let dbObj = {
+          string: message.content,
+          id: message.id
+        }
+        if (message.attachments.size > 0) {
+          dbObj.attachment = message.attachments.values().next().value.url
+        }
+        messageCache.push(dbObj)
       }
     }
     if (command === inviteCmd) {
@@ -144,6 +171,12 @@ client.on('message', message => {
         })
     }
   }
+})
+
+client.on('messageDelete', message => {
+  // console.log('Adding message ' + message.id + ' to deletion cache.')
+  deletionCache.push(message.id)
+  console.log('deletionCache:', deletionCache)
 })
 
 function validateMessage(message) {
@@ -170,7 +203,14 @@ function fetchMessageChunk(message, oldestMessageID, historyCache) {
   message.channel.fetchMessages({ before: oldestMessageID, limit: 100 })
     .then(messages => {
       historyCache = historyCache.concat(messages.filter(elem => !elem.author.bot).map(elem => {
-        return { string: elem.content, id: elem.id }
+        let dbObj = {
+          string: elem.content,
+          id: elem.id
+        }
+        if (elem.attachments.size > 0) {
+          dbObj.attachment = elem.attachments.values().next().value.url
+        }
+        return dbObj
       }));
       oldestMessageID = messages.last().id
       return historyCache.concat(fetchMessageChunk(message, oldestMessageID, historyCache))

@@ -1,19 +1,95 @@
 # MarkBot for Discord
-This is a super rough prototype. A Markov chain bot using markov-strings. Just uploading here so it can run and generate training data.
+A Markov chain bot using markov-strings.
 
 # Setup
+First, create a [Discord bot application](https://discordapp.com/developers/applications/).
+## Windows
+### Requirements
+* [Node.js 8.0+ (Current)](https://nodejs.org/en/download/current/)
 
-## Configuration
-Create a file called `config.json` in the project directory with the contents:
+### Setup
+1. Install Node.js 8.0 or newer.
+1. Download this repository using git in a command prompt
+    ```cmd
+    git clone https://github.com/charlocharlie/markov-discord.git
+    ```
+    or by just downloading and extracting the [project zip](https://github.com/charlocharlie/markov-discord/archive/master.zip) from GitHub.
+1. Open a command prompt in the `markov-discord` folder.
+    ```sh
+    # Install Windows build tools
+    npm install --global --production windows-build-tools
+    # NPM install non-development packages
+    npm install --production
+    ```
+1. Create a file called `config.json` in the project directory with the contents:
+    ```json
+    {
+      "prefix":"!mark",
+      "game":"\"!mark help\" for help",
+      "token":"k5NzE2NDg1MTIwMjc0ODQ0Nj.DSnXwg.ttNotARealToken5p3WfDoUxhiH"
+    }
+    ```
+    Feel free to change the command prefix, game display. Add your bot token.
+1. Run the bot:
+    ```sh
+    npm start
+    ```
+
+
+## Debian Linux
+### Requirements
+* Node.js 8.0+
+* Python 2.7 (for erlpack)
+* C++ build tools (for erlpack)
+
+### Download
+```sh
+# Clone this repository
+git clone https://github.com/charlocharlie/markov-discord.git
+cd markov-discord
 ```
+
+### Configure
+Create a file called `config.json` in the project directory with the contents:
+```json
 {
   "prefix":"!mark",
   "game":"\"!mark help\" for help",
   "token":"k5NzE2NDg1MTIwMjc0ODQ0Nj.DSnXwg.ttNotARealToken5p3WfDoUxhiH"
 }
 ```
+Feel free to change the command prefix, game display. Add your bot token.
 
-## Changelog
+### Install and Run
+```sh
+# Install Node.js if you haven't already
+wget -qO- https://raw.githubusercontent.com/creationix/nvm/v0.33.11/install.sh | bash
+nvm install node
+
+# NPM install non-development packages
+npm install --production
+
+# If you run into build errors, install the following packages:
+sudo apt-get install python -y
+sudo apt-get install build-essential -y
+
+# Start the program
+npm start
+```
+
+
+
+# Changelog
+### 0.5.0
+Fixed bug where `!mark help` didn't work.
+Only admins can train.
+The bot responds when mentioned.
+The bot cannot mention @everyone.
+Added version number to help.
+Added `!mark tts` for a quieter TTS response.
+Readme overhaul.
+Simpler config loading.
+
 ### 0.4.0
 Huge refactor. 
 Added `!mark debug` which sends debug info alongside the message.
@@ -28,3 +104,6 @@ Deleted messages no longer persist in the database longer than 24 hours.
 
 ### 0.2.0
 Updated training algorithm and data structure.
+
+# Thanks
+Thanks to [BotMaker-for-Discord](https://github.com/CorySanin/BotMaker-for-Discord) which I used as a reference when during development. 

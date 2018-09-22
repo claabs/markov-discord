@@ -2,6 +2,8 @@ const Discord = require('discord.js'); // https://discord.js.org/#/docs/main/sta
 const fs = require('fs');
 const Markov = require('markov-strings');
 const schedule = require('node-schedule');
+const { version } = require('./package.json');
+const cfg = require('./config');
 
 const client = new Discord.Client();
 // const ZEROWIDTH_SPACE = String.fromCharCode(parseInt('200B', 16));
@@ -85,16 +87,23 @@ function regenMarkov() {
  * Loads the config settings from disk
  */
 function loadConfig() {
-  const cfgfile = 'config.json';
-  if (fs.existsSync(cfgfile)) {
-    const cfg = JSON.parse(fs.readFileSync(cfgfile, 'utf8'));
-    PREFIX = cfg.prefix;
-    GAME = cfg.game;
-    // regenMarkov()
-    client.login(cfg.token);
-  } else {
-    console.log(`Oh no!!! ${cfgfile} could not be found!`);
-  }
+  PREFIX = cfg.prefix;
+  GAME = cfg.game;
+  // regenMarkov()
+  client.login(cfg.token);
+}
+
+/**
+ * Checks if the author of a message as moderator-like permissions.
+ * @param {Message} message Message object to get the sender of the message.
+ * @return {Boolean} True if the sender is a moderator.
+ */
+function isModerator(message) {
+  const { member } = message;
+  return member.hasPermission('ADMINISTRATOR')
+  || member.hasPermission('MANAGE_CHANNELS')
+  || member.hasPermission('KICK_MEMBERS')
+  || member.hasPermission('MOVE_MEMBERS');
 }
 
 /**
@@ -120,6 +129,8 @@ function validateMessage(message) {
       command = 'invite';
     } else if (split[1] === 'debug') {
       command = 'debug';
+    } else if (split[1] === 'tts') {
+      command = 'tts';
     }
   }
   return command;
@@ -170,17 +181,39 @@ async function fetchMessages(message) {
  * General Markov-chain response function
  * @param {Message} message The message that invoked the action, used for channel info.
  * @param {Boolean} debug Sends debug info as a message if true.
+ * @param {Boolean} tts If the message should be sent as TTS. Defaults to the TTS setting of the
+ * invoking message.
+ * @param {Array<String>} filterWords Array of words that the message generated will be filtered on.
  */
-function generateResponse(message, debug = false) {
+function generateResponse(message, debug = false, tts = message.tts, filterWords) {
   console.log('Responding...');
-  markov.generateSentence().then((result) => {
+  const options = {};
+  if (filterWords) {
+    options.filter = (result) => {
+      for (let i = 0; i < filterWords.length; i++) {
+        if (result.string.includes(filterWords[i])) {
+          return true;
+        }
+      }
+      return false;
+    };
+    options.maxTries = 5000;
+  }
+  markov.generateSentence(options).then((result) => {
     console.log('Generated Result:', result);
-    const messageOpts = { tts: message.tts };
-    const randomMessage = markovDB[Math.floor(Math.random() * markovDB.length)];
-    console.log('Random Message:', randomMessage);
-    if (Object.prototype.hasOwnProperty.call(randomMessage, 'attachment')) {
-      messageOpts.files = [{ attachment: randomMessage.attachment }];
+    const messageOpts = { tts };
+    const attachmentRefs = result.refs.filter(ref => Object.prototype.hasOwnProperty.call(ref, 'attachment'));
+    if (attachmentRefs.length > 0) {
+      const randomRef = attachmentRefs[Math.floor(Math.random() * attachmentRefs.length)];
+      messageOpts.files = [{ attachment: randomRef.attachment }];
+    } else {
+      const randomMessage = markovDB[Math.floor(Math.random() * markovDB.length)];
+      if (Object.prototype.hasOwnProperty.call(randomMessage, 'attachment')) {
+        messageOpts.files = [{ attachment: randomMessage.attachment }];
+      }
     }
+
+    result.string.replace(/@everyone/g, '@everyοne'); // Replace @everyone with a homoglyph 'o'
     message.channel.send(result.string, messageOpts);
     if (debug) message.channel.send(`\`\`\`\n${JSON.stringify(result, null, 2)}\n\`\`\``);
   }).catch((err) => {
@@ -213,7 +246,6 @@ client.on('message', (message) => {
   if (message.guild) {
     const command = validateMessage(message);
     if (command === 'help') {
-      console.log(message.channel);
       const richem = new Discord.RichEmbed()
         .setAuthor(client.user.username, client.user.avatarURL)
         .setThumbnail(client.user.avatarURL)
@@ -226,21 +258,27 @@ client.on('message', (message) => {
         + 'this before shutting down to avoid any data loss. This automatically runs at midnight.')
         .addField('!mark invite', 'Don\'t invite this bot to other servers. The database is shared '
         + 'between all servers and text channels.')
-        .addBlankField('!mark debug', 'Runs the !mark command and follows it up with debug info.');
+        .addField('!mark debug', 'Runs the !mark command and follows it up with debug info.')
+        .setFooter(`Markov Discord v${version} by Charlie Laabs`);
       message.channel.send(richem).catch(() => {
         message.author.send(richem);
       });
     }
     if (command === 'train') {
-      console.log('Training...');
-      fileObj = {
-        messages: [],
-      };
-      fs.writeFileSync('markovDB.json', JSON.stringify(fileObj), 'utf-8');
-      fetchMessages(message);
+      if (isModerator(message)) {
+        console.log('Training...');
+        fileObj = {
+          messages: [],
+        };
+        fs.writeFileSync('markovDB.json', JSON.stringify(fileObj), 'utf-8');
+        fetchMessages(message);
+      }
     }
     if (command === 'respond') {
       generateResponse(message);
+    }
+    if (command === 'tts') {
+      generateResponse(message, false, true);
     }
     if (command === 'debug') {
       generateResponse(message, true);
@@ -260,6 +298,9 @@ client.on('message', (message) => {
           dbObj.attachment = message.attachments.values().next().value.url;
         }
         messageCache.push(dbObj);
+        if (message.isMentioned(client.user)) {
+          generateResponse(message);
+        }
       }
     }
     if (command === inviteCmd) {

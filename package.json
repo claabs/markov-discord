@@ -1,35 +1,41 @@
 {
   "name": "markbot",
-  "version": "0.5.0",
+  "version": "0.6.0",
   "description": "A conversational Markov chain bot for Discord",
   "main": "index.js",
   "scripts": {
-    "start": "node index.js"
+    "start": "node index.js",
+    "docker-up": "docker run --rm -e TOKEN=Mjc4MzU0MTU0NTYzNTY3NjM2.XLtWYQ.1pF0BMNDM0PO4kwPSEPelabRTEw -it $(docker build -q .)"
   },
   "repository": "https://github.com/charlocharlie/markov-discord.git",
   "keywords": [
     "discord",
     "markov",
     "chain",
-    "bot"
+    "markov-chain",
+    "bot",
+    "discord-js",
+    "discord-bot",
+    "markov-chain-bot",
+    "docker"
   ],
   "author": "Charlie Laabs <charlielaabs@gmail.com>",
   "license": "MIT",
   "dependencies": {
-    "bufferutil": "^4.0.0",
+    "bufferutil": "^4.0.1",
     "discord.js": "^11.4.2",
     "erlpack": "github:discordapp/erlpack",
-    "markov-strings": "^1.5.0",
-    "node-schedule": "^1.3.0",
+    "markov-strings": "^1.5.2",
+    "node-schedule": "^1.3.2",
     "zlib-sync": "^0.1.4"
   },
   "engines": {
     "node": ">=8.0.0"
   },
   "devDependencies": {
-    "eslint": "^5.4.0",
+    "eslint": "^5.16.0",
     "eslint-config-airbnb-base": "^13.1.0",
-    "eslint-plugin-import": "^2.14.0"
+    "eslint-plugin-import": "^2.17.2"
   },
   "eslintConfig": {
     "parserOptions": {

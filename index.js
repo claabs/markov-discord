@@ -3,7 +3,6 @@ const fs = require('fs');
 const Markov = require('markov-strings');
 const schedule = require('node-schedule');
 const { version } = require('./package.json');
-const cfg = require('./config');
 
 const client = new Discord.Client();
 // const ZEROWIDTH_SPACE = String.fromCharCode(parseInt('200B', 16));
@@ -56,9 +55,17 @@ function uniqueBy(arr, propertyName) {
 function regenMarkov() {
   console.log('Regenerating Markov corpus...');
   try {
-    fileObj = JSON.parse(fs.readFileSync('markovDB.json', 'utf8'));
+    fileObj = JSON.parse(fs.readFileSync('config/markovDB.json', 'utf8'));
   } catch (err) {
-    console.log(err);
+    console.log('No markovDB.json, starting with initial values');
+    fileObj = {
+      messages: [
+        {
+          id: '0',
+          string: '',
+        },
+      ],
+    };
   }
   // console.log("MessageCache", messageCache)
   markovDB = fileObj.messages;
@@ -69,15 +76,12 @@ function regenMarkov() {
     markovDB.splice(removeIndex, 1);
   });
   deletionCache = [];
-  if (markovDB.length === 0) {
-    markovDB.push({ string: 'hello', id: null });
-  }
   markov = new Markov(markovDB, markovOpts);
   markov.buildCorpusSync();
   fileObj.messages = markovDB;
   // console.log("WRITING THE FOLLOWING DATA:")
   // console.log(fileObj)
-  fs.writeFileSync('markovDB.json', JSON.stringify(fileObj), 'utf-8');
+  fs.writeFileSync('config/markovDB.json', JSON.stringify(fileObj), 'utf-8');
   fileObj = null;
   messageCache = [];
   console.log('Done regenerating Markov corpus.');
@@ -87,10 +91,30 @@ function regenMarkov() {
  * Loads the config settings from disk
  */
 function loadConfig() {
-  PREFIX = cfg.prefix;
-  GAME = cfg.game;
-  // regenMarkov()
-  client.login(cfg.token);
+  // Move config if in legacy location
+  if (fs.existsSync('./config.json')) {
+    console.log('Copying config.json to new location in ./config');
+    fs.renameSync('./config.json', './config/config.json');
+  }
+
+  if (fs.existsSync('./markovDB.json')) {
+    console.log('Copying markovDB.json to new location in ./config');
+    fs.renameSync('./markovDB.json', './config/markovDB.json');
+  }
+
+
+  try {
+  // eslint-disable-next-line global-require
+    const cfg = require('./config/config.json');
+    PREFIX = cfg.prefix;
+    GAME = cfg.game;
+    client.login(cfg.token);
+  } catch (e) {
+    console.warn('Failed to use config.json. using default configuration with token environment variable');
+    PREFIX = '!mark';
+    GAME = '"!mark help" for help';
+    client.login(process.env.TOKEN);
+  }
 }
 
 /**
@@ -235,7 +259,7 @@ client.on('error', (err) => {
   const errText = `ERROR: ${err.name} - ${err.message}`;
   console.log(errText);
   errors.push(errText);
-  fs.writeFile('error.json', JSON.stringify(errors), (fsErr) => {
+  fs.writeFile('./config/error.json', JSON.stringify(errors), (fsErr) => {
     if (fsErr) {
       console.log(`error writing to error file: ${fsErr.message}`);
     }
@@ -270,7 +294,7 @@ client.on('message', (message) => {
         fileObj = {
           messages: [],
         };
-        fs.writeFileSync('markovDB.json', JSON.stringify(fileObj), 'utf-8');
+        fs.writeFileSync('config/markovDB.json', JSON.stringify(fileObj), 'utf-8');
         fetchMessages(message);
       }
     }
@@ -284,7 +308,6 @@ client.on('message', (message) => {
       generateResponse(message, true);
     }
     if (command === 'regen') {
-      console.log('Regenerating...');
       regenMarkov();
     }
     if (command === null) {
@@ -324,4 +347,4 @@ client.on('messageDelete', (message) => {
 });
 
 loadConfig();
-schedule.scheduleJob('0 0 * * *', regenMarkov());
+schedule.scheduleJob('0 4 * * *', regenMarkov());

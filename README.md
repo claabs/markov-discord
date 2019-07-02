@@ -101,6 +101,9 @@ npm start
 
 
 # Changelog
+### 0.6.1
+* Fix bot crashing on scheduled regen
+
 ### 0.6.0
 * Added Docker deploy functionality.
 * Moved config and database to `./config` directory. Existing configs will be migrated.

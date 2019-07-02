@@ -347,4 +347,4 @@ client.on('messageDelete', (message) => {
 });
 
 loadConfig();
-schedule.scheduleJob('0 4 * * *', regenMarkov());
+schedule.scheduleJob('0 4 * * *', () => regenMarkov());

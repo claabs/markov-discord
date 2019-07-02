@@ -1,11 +1,11 @@
 {
   "name": "markbot",
-  "version": "0.6.0",
+  "version": "0.6.1",
   "description": "A conversational Markov chain bot for Discord",
   "main": "index.js",
   "scripts": {
     "start": "node index.js",
-    "docker-up": "docker run --rm -e TOKEN=Mjc4MzU0MTU0NTYzNTY3NjM2.XLtWYQ.1pF0BMNDM0PO4kwPSEPelabRTEw -it $(docker build -q .)"
+    "docker-up": "docker run --rm -e TOKEN=abc123 -it $(docker build -q .)"
   },
   "repository": "https://github.com/charlocharlie/markov-discord.git",
   "keywords": [

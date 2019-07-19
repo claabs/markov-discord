@@ -101,6 +101,9 @@ npm start
 
 
 # Changelog
+### 0.6.2
+* Fix MarkovDB not loading on boot
+
 ### 0.6.1
 * Fix bot crashing on scheduled regen
 

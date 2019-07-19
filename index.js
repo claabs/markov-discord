@@ -253,6 +253,7 @@ function generateResponse(message, debug = false, tts = message.tts, filterWords
 client.on('ready', () => {
   console.log('Markbot by Charlie Laabs');
   client.user.setActivity(GAME);
+  regenMarkov();
 });
 
 client.on('error', (err) => {

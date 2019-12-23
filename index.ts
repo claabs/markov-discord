@@ -22,6 +22,12 @@ interface MessagesDB {
   messages: MessageRecord[];
 }
 
+interface MarkbotConfig {
+  prefix: string;
+  game: string;
+  token?: string;
+}
+
 const version: string = JSON.parse(fs.readFileSync('./package.json', 'utf8')).version || '0.0.0';
 
 const client = new Discord.Client();
@@ -52,6 +58,7 @@ const markovOpts = {
   minScorePerWord: 0,
   maxTries: 10000,
 };
+
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 function uniqueBy<Record extends { [key: string]: any }>(
   arr: Record[],
@@ -126,28 +133,29 @@ function loadConfig(): void {
     fs.renameSync('./markovDB.json', './config/markovDB.json');
   }
 
+  let token = 'missing';
   try {
-    const cfg = JSON.parse(fs.readFileSync('./config/config.json', 'utf8'));
-    PREFIX = cfg.prefix;
-    GAME = cfg.game;
-    client.login(cfg.token);
+    const cfg: MarkbotConfig = JSON.parse(fs.readFileSync('./config/config.json', 'utf8'));
+    PREFIX = cfg.prefix || '!mark';
+    GAME = cfg.game || '!mark help';
+    token = cfg.token || process.env.TOKEN || token;
   } catch (e) {
-    console.warn(
-      'Failed to use config.json. using default configuration with token environment variable'
-    );
-    PREFIX = '!mark';
-    GAME = '"!mark help" for help';
-    client.login(process.env.TOKEN);
+    console.error('Failed to read config.json.');
+    throw e;
+  }
+  try {
+    client.login(token);
+  } catch (e) {
+    console.error('Failed to login with token:', token);
   }
 }
 
 /**
  * Checks if the author of a message as moderator-like permissions.
- * @param {Message} message Message object to get the sender of the message.
+ * @param {GuildMember} member Sender of the message
  * @return {Boolean} True if the sender is a moderator.
  */
-function isModerator(message: Discord.Message): boolean {
-  const { member } = message;
+function isModerator(member: Discord.GuildMember): boolean {
   return (
     member.hasPermission('ADMINISTRATOR') ||
     member.hasPermission('MANAGE_CHANNELS') ||
@@ -346,7 +354,7 @@ client.on('message', message => {
       });
     }
     if (command === 'train') {
-      if (isModerator(message)) {
+      if (isModerator(message.member)) {
         console.log('Training...');
         fileObj = {
           messages: [],

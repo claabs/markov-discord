@@ -27,7 +27,7 @@
   "dependencies": {
     "bufferutil": "^4.0.1",
     "discord.js": "^11.5.1",
-    "erlpack": "github:discordapp/erlpack",
+    "erlpack": "^0.1.3",
     "markov-strings": "^2.1.0",
     "node-schedule": "^1.3.2",
     "source-map-support": "^0.5.16",

@@ -4,3 +4,4 @@
 # Allow files and directories
 !*.js
 !*.json
+!*.ts

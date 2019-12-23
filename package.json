@@ -1,10 +1,13 @@
 {
   "name": "markbot",
-  "version": "0.6.2",
+  "version": "0.7.0",
   "description": "A conversational Markov chain bot for Discord",
   "main": "index.js",
   "scripts": {
-    "start": "node index.js",
+    "start": "node dist/index.js",
+    "start:ts": "ts-node index.ts",
+    "build": "tsc",
+    "lint": "tsc --noEmit && eslint **/*.ts",
     "docker-up": "docker run --rm -e TOKEN=abc123 -it $(docker build -q .)"
   },
   "repository": "https://github.com/charlocharlie/markov-discord.git",
@@ -23,38 +26,31 @@
   "license": "MIT",
   "dependencies": {
     "bufferutil": "^4.0.1",
-    "discord.js": "^11.4.2",
-    "erlpack": "github:discordapp/erlpack",
-    "markov-strings": "^1.5.2",
+    "discord.js": "^11.5.1",
+    "erlpack": "^0.1.3",
+    "markov-strings": "^2.1.0",
     "node-schedule": "^1.3.2",
-    "zlib-sync": "^0.1.4"
+    "source-map-support": "^0.5.16",
+    "zlib-sync": "^0.1.6"
   },
   "engines": {
     "node": ">=8.0.0"
   },
   "devDependencies": {
-    "eslint": "^5.16.0",
-    "eslint-config-airbnb-base": "^13.1.0",
-    "eslint-plugin-import": "^2.17.2"
+    "@types/node": "^12.12.21",
+    "@types/node-schedule": "^1.3.0",
+    "@typescript-eslint/eslint-plugin": "^2.13.0",
+    "@typescript-eslint/parser": "^2.13.0",
+    "eslint": "^6.8.0",
+    "eslint-config-airbnb-base": "^14.0.0",
+    "eslint-config-prettier": "^6.7.0",
+    "eslint-plugin-import": "^2.19.1",
+    "eslint-plugin-prettier": "^3.1.2",
+    "prettier": "^1.19.1",
+    "ts-node": "^8.5.4",
+    "typescript": "^3.7.4"
   },
-  "eslintConfig": {
-    "parserOptions": {
-      "ecmaVersion": 2017
-    },
-    "env": {
-      "node": true
-    },
-    "extends": [
-      "airbnb-base"
-    ],
-    "rules": {
-      "no-console": 0,
-      "no-plusplus": [
-        "error",
-        {
-          "allowForLoopAfterthoughts": true
-        }
-      ]
-    }
-  }
+  "eslintIgnore": [
+    "**/*.js"
+  ]
 }

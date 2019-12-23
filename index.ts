@@ -55,9 +55,9 @@ let markov: Markov;
 // let markov = new Markov(markovDB, markovOpts);
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
-function uniqueBy<Record extends { [key: string]: any }, K extends keyof Record>(
+function uniqueBy<Record extends { [key: string]: any }>(
   arr: Record[],
-  propertyName: K
+  propertyName: keyof Record
 ): Record[] {
   const unique: Record[] = [];
   const found: { [key: string]: boolean } = {};
@@ -94,7 +94,7 @@ function regenMarkov(): void {
   }
   // console.log("MessageCache", messageCache)
   markovDB = fileObj.messages;
-  markovDB = uniqueBy<MessageRecord, 'id'>(markovDB.concat(messageCache), 'id');
+  markovDB = uniqueBy<MessageRecord>(markovDB.concat(messageCache), 'id');
   deletionCache.forEach(id => {
     const removeIndex = markovDB.map(item => item.id).indexOf(id);
     // console.log('Remove Index:', removeIndex)

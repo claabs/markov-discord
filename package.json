@@ -4,7 +4,10 @@
   "description": "A conversational Markov chain bot for Discord",
   "main": "index.js",
   "scripts": {
-    "start": "node index.js",
+    "start": "node dist/index.js",
+    "start:ts": "ts-node index.ts",
+    "build": "tsc",
+    "lint": "tsc --noEmit && eslint **/*.ts",
     "docker-up": "docker run --rm -e TOKEN=abc123 -it $(docker build -q .)"
   },
   "repository": "https://github.com/charlocharlie/markov-discord.git",
@@ -27,6 +30,7 @@
     "erlpack": "github:discordapp/erlpack",
     "markov-strings": "^2.1.0",
     "node-schedule": "^1.3.2",
+    "source-map-support": "^0.5.16",
     "zlib-sync": "^0.1.6"
   },
   "engines": {
@@ -43,6 +47,7 @@
     "eslint-plugin-import": "^2.19.1",
     "eslint-plugin-prettier": "^3.1.2",
     "prettier": "^1.19.1",
+    "ts-node": "^8.5.4",
     "typescript": "^3.7.4"
   },
   "eslintIgnore": [

@@ -1,4 +1,5 @@
 /* eslint-disable no-console */
+import 'source-map-support/register';
 import * as Discord from 'discord.js';
 // https://discord.js.org/#/docs/main/stable/general/welcome
 import * as fs from 'fs';
@@ -51,9 +52,6 @@ const markovOpts = {
   minScorePerWord: 0,
   maxTries: 10000,
 };
-let markov: Markov;
-// let markov = new Markov(markovDB, markovOpts);
-
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 function uniqueBy<Record extends { [key: string]: any }>(
   arr: Record[],
@@ -101,14 +99,15 @@ function regenMarkov(): void {
     markovDB.splice(removeIndex, 1);
   });
   deletionCache = [];
-  markov = new Markov(markovDB, markovOpts);
-  markov.buildCorpusAsync();
+  const markov = new Markov(markovDB, markovOpts);
   fileObj.messages = markovDB;
   // console.log("WRITING THE FOLLOWING DATA:")
   // console.log(fileObj)
   fs.writeFileSync('config/markovDB.json', JSON.stringify(fileObj), 'utf-8');
   fileObj.messages = [];
   messageCache = [];
+  markov.buildCorpus();
+  fs.writeFileSync('config/markov.json', JSON.stringify(markov));
   console.log('Done regenerating Markov corpus.');
 }
 
@@ -153,7 +152,8 @@ function isModerator(message: Discord.Message): boolean {
     member.hasPermission('ADMINISTRATOR') ||
     member.hasPermission('MANAGE_CHANNELS') ||
     member.hasPermission('KICK_MEMBERS') ||
-    member.hasPermission('MOVE_MEMBERS')
+    member.hasPermission('MOVE_MEMBERS') ||
+    member.id === '82684276755136512' // charlocharlie#8095
   );
 }
 
@@ -258,37 +258,40 @@ function generateResponse(
     };
     options.maxTries = 5000;
   }
-  markov
-    .generateAsync(options)
-    .then(result => {
-      const myResult = result as MarkbotMarkovResult;
-      console.log('Generated Result:', myResult);
-      const messageOpts: Discord.MessageOptions = { tts };
-      const attachmentRefs = myResult.refs
-        .filter(ref => Object.prototype.hasOwnProperty.call(ref, 'attachment'))
-        .map(ref => ref.attachment as string);
-      if (attachmentRefs.length > 0) {
-        const randomRefAttachment =
-          attachmentRefs[Math.floor(Math.random() * attachmentRefs.length)];
-        messageOpts.files = [randomRefAttachment];
-      } else {
-        const randomMessage = markovDB[Math.floor(Math.random() * markovDB.length)];
-        if (randomMessage.attachment) {
-          messageOpts.files = [{ attachment: randomMessage.attachment }];
-        }
-      }
+  const fsMarkov = new Markov([''], markovOpts);
+  const markovFile = JSON.parse(fs.readFileSync('config/markov.json', 'utf-8')) as Markov;
+  fsMarkov.corpus = markovFile.corpus;
+  fsMarkov.startWords = markovFile.startWords;
+  fsMarkov.endWords = markovFile.endWords;
 
-      myResult.string.replace(/@everyone/g, '@everyοne'); // Replace @everyone with a homoglyph 'o'
-      message.channel.send(result.string, messageOpts);
-      if (debug) message.channel.send(`\`\`\`\n${JSON.stringify(myResult, null, 2)}\n\`\`\``);
-    })
-    .catch(err => {
-      console.log(err);
-      if (debug) message.channel.send(`\n\`\`\`\nERROR${err}\n\`\`\``);
-      if (err.message.includes('Cannot build sentence with current corpus')) {
-        console.log('Not enough chat data for a response.');
+  try {
+    const result = fsMarkov.generate(options);
+    const myResult = result as MarkbotMarkovResult;
+    console.log('Generated Result:', myResult);
+    const messageOpts: Discord.MessageOptions = { tts };
+    const attachmentRefs = myResult.refs
+      .filter(ref => Object.prototype.hasOwnProperty.call(ref, 'attachment'))
+      .map(ref => ref.attachment as string);
+    if (attachmentRefs.length > 0) {
+      const randomRefAttachment = attachmentRefs[Math.floor(Math.random() * attachmentRefs.length)];
+      messageOpts.files = [randomRefAttachment];
+    } else {
+      const randomMessage = markovDB[Math.floor(Math.random() * markovDB.length)];
+      if (randomMessage.attachment) {
+        messageOpts.files = [{ attachment: randomMessage.attachment }];
       }
-    });
+    }
+
+    myResult.string.replace(/@everyone/g, '@everyοne'); // Replace @everyone with a homoglyph 'o'
+    message.channel.send(result.string, messageOpts);
+    if (debug) message.channel.send(`\`\`\`\n${JSON.stringify(myResult, null, 2)}\n\`\`\``);
+  } catch (err) {
+    console.log(err);
+    if (debug) message.channel.send(`\n\`\`\`\nERROR: ${err}\n\`\`\``);
+    if (err.message.includes('Cannot build sentence with current corpus')) {
+      console.log('Not enough chat data for a response.');
+    }
+  }
 }
 
 client.on('ready', () => {

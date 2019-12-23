@@ -65,5 +65,3 @@ config.json
 # error output file
 error.json
 markovDB.json
-.vscode/launch.json
-.vscode/settings.json

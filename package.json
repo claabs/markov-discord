@@ -1,6 +1,6 @@
 {
   "name": "markbot",
-  "version": "0.6.2",
+  "version": "0.7.0",
   "description": "A conversational Markov chain bot for Discord",
   "main": "index.js",
   "scripts": {

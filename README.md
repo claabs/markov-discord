@@ -93,14 +93,20 @@ npm start
 
 ### Setup with Docker Hub image
 1. Install Docker for your OS.
-1. Open a command prompts and run this one-liner:
+1. Open a command prompts and run:
     ```sh
-    docker build https://github.com/charlocharlie/markov-discord.git 
+    docker pull charlocharlie/markov-discord
+    docker run --rm -d charlocharlie/markov-discord:latest
     ```
 
 
 
 # Changelog
+### 0.7.0
+* Convert project to Typescript
+* Optimize Docker build (smaller image)
+* Load corpus from filesystem to reduce memory load
+
 ### 0.6.2
 * Fix MarkovDB not loading on boot
 

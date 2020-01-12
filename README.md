@@ -39,6 +39,8 @@ First, create a [Discord bot application](https://discordapp.com/developers/appl
     npm install --global --production windows-build-tools
     # NPM install non-development packages
     npm install --production
+    # Build the Typescript
+    npm run build
     ```
 
 1. Create a file called `config.json` in the project directory with the contents:
@@ -101,6 +103,9 @@ npm install --production
 # If you run into build errors, install the following packages:
 sudo apt-get install python -y
 sudo apt-get install build-essential -y
+
+# Build the Typescript
+npm run build
 
 # Start the program
 npm start

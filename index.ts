@@ -4,7 +4,11 @@ import * as Discord from 'discord.js';
 // https://discord.js.org/#/docs/main/stable/general/welcome
 import * as fs from 'fs';
 
-import Markov, { MarkovGenerateOptions, MarkovResult } from 'markov-strings';
+import Markov, {
+  MarkovGenerateOptions,
+  MarkovResult,
+  MarkovConstructorOptions,
+} from 'markov-strings';
 
 import * as schedule from 'node-schedule';
 
@@ -23,8 +27,11 @@ interface MessagesDB {
 }
 
 interface MarkbotConfig {
-  prefix: string;
-  game: string;
+  stateSize?: number;
+  minScore?: number;
+  maxTries?: number;
+  prefix?: string;
+  game?: string;
   token?: string;
 }
 
@@ -37,8 +44,11 @@ const client = new Discord.Client();
 const PAGE_SIZE = 100;
 // let guilds = [];
 // let connected = -1;
-let GAME = 'GAME';
-let PREFIX = '! ';
+let GAME = '!mark help';
+let PREFIX = '!mark';
+let STATE_SIZE = 2; // Value of 1 to 3, based on corpus quality
+let MAX_TRIES = 1000;
+let MIN_SCORE = 10;
 const inviteCmd = 'invite';
 const errors: string[] = [];
 
@@ -49,14 +59,8 @@ let fileObj: MessagesDB = {
 let markovDB: MessageRecord[] = [];
 let messageCache: MessageRecord[] = [];
 let deletionCache: string[] = [];
-const markovOpts = {
-  stateSize: 2,
-  maxLength: 2000,
-  minWords: 3,
-  maxWords: 0,
-  minScore: 10,
-  minScorePerWord: 0,
-  maxTries: 10000,
+let markovOpts: MarkovConstructorOptions = {
+  stateSize: STATE_SIZE,
 };
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -139,15 +143,21 @@ function loadConfig(): void {
     PREFIX = cfg.prefix || '!mark';
     GAME = cfg.game || '!mark help';
     token = cfg.token || process.env.TOKEN || token;
+    STATE_SIZE = cfg.stateSize || STATE_SIZE;
+    MIN_SCORE = cfg.minScore || MIN_SCORE;
+    MAX_TRIES = cfg.maxTries || MAX_TRIES;
   } catch (e) {
-    console.error('Failed to read config.json.');
-    throw e;
+    console.warn('Failed to read config.json.');
+    token = process.env.TOKEN || token;
   }
   try {
     client.login(token);
   } catch (e) {
     console.error('Failed to login with token:', token);
   }
+  markovOpts = {
+    stateSize: STATE_SIZE,
+  };
 }
 
 /**
@@ -245,27 +255,16 @@ async function fetchMessages(message: Discord.Message): Promise<void> {
  * @param {Boolean} debug Sends debug info as a message if true.
  * @param {Boolean} tts If the message should be sent as TTS. Defaults to the TTS setting of the
  * invoking message.
- * @param {Array<String>} filterWords Array of words that the message generated will be filtered on.
  */
-function generateResponse(
-  message: Discord.Message,
-  debug = false,
-  tts = message.tts,
-  filterWords?: string[]
-): void {
+function generateResponse(message: Discord.Message, debug = false, tts = message.tts): void {
   console.log('Responding...');
-  const options: MarkovGenerateOptions = {};
-  if (filterWords) {
-    options.filter = (result): boolean => {
-      for (let i = 0; i < filterWords.length; i += 1) {
-        if (result.string.includes(filterWords[i])) {
-          return true;
-        }
-      }
-      return false;
-    };
-    options.maxTries = 5000;
-  }
+  const options: MarkovGenerateOptions = {
+    filter: (result): boolean => {
+      return result.score >= MIN_SCORE;
+    },
+    maxTries: MAX_TRIES,
+  };
+
   const fsMarkov = new Markov([''], markovOpts);
   const markovFile = JSON.parse(fs.readFileSync('config/markov.json', 'utf-8')) as Markov;
   fsMarkov.corpus = markovFile.corpus;

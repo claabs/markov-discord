@@ -17,12 +17,12 @@ First, create a [Discord bot application](https://discordapp.com/developers/appl
 
 ### Windows
 
-#### Requirements
+#### Windows Requirements
 
 * [Node.js 12.0+ (Current)](https://nodejs.org/en/download/)
   * Installing with build tools is recommended
 
-#### Setup
+#### Windows Setup
 
 1. Install Node.js 12.0 or newer.
 1. Download this repository using git in a command prompt
@@ -62,7 +62,7 @@ First, create a [Discord bot application](https://discordapp.com/developers/appl
 
 ### Debian Linux
 
-#### Requirements
+#### Debian Requirements
 
 * Node.js 12.0+
 * Python 2.7 (for erlpack)
@@ -142,6 +142,10 @@ npm start
 
 ## Changelog
 
+### 0.7.2
+
+* Fix @everyone replacement
+
 ### 0.7.1
 
 * Readme updates
@@ -201,6 +205,6 @@ npm start
 
 * Updated training algorithm and data structure.
 
-# Thanks
+## Thanks
 
 Thanks to [BotMaker-for-Discord](https://github.com/CorySanin/BotMaker-for-Discord) which I used as a reference when during development.

@@ -272,8 +272,7 @@ function generateResponse(message: Discord.Message, debug = false, tts = message
   fsMarkov.endWords = markovFile.endWords;
 
   try {
-    const result = fsMarkov.generate(options);
-    const myResult = result as MarkbotMarkovResult;
+    const myResult = fsMarkov.generate(options) as MarkbotMarkovResult;
     console.log('Generated Result:', myResult);
     const messageOpts: Discord.MessageOptions = { tts };
     const attachmentRefs = myResult.refs
@@ -289,8 +288,8 @@ function generateResponse(message: Discord.Message, debug = false, tts = message
       }
     }
 
-    myResult.string.replace(/@everyone/g, '@everyοne'); // Replace @everyone with a homoglyph 'o'
-    message.channel.send(result.string, messageOpts);
+    myResult.string = myResult.string.replace(/@everyone/g, '@everyοne'); // Replace @everyone with a homoglyph 'o'
+    message.channel.send(myResult.string, messageOpts);
     if (debug) message.channel.send(`\`\`\`\n${JSON.stringify(myResult, null, 2)}\n\`\`\``);
   } catch (err) {
     console.log(err);

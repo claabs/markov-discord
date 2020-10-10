@@ -214,7 +214,7 @@ function validateMessage(message: Discord.Message): string | null {
 async function fetchMessages(message: Discord.Message): Promise<void> {
   let historyCache: MessageRecord[] = [];
   let keepGoing = true;
-  let oldestMessageID;
+  let oldestMessageID: string | undefined;
 
   while (keepGoing) {
     const messages: Discord.Collection<
@@ -238,9 +238,10 @@ async function fetchMessages(message: Discord.Message): Promise<void> {
         return dbObj;
       });
     historyCache = historyCache.concat(nonBotMessageFormatted);
-    oldestMessageID = messages.last().id;
-    if (messages.size < PAGE_SIZE) {
+    if (!messages.last() || messages.size < PAGE_SIZE) {
       keepGoing = false;
+    } else {
+      oldestMessageID = messages.last().id;
     }
   }
   console.log(`Trained from ${historyCache.length} past human authored messages.`);

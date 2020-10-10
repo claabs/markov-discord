@@ -36,9 +36,9 @@ First, create a [Discord bot application](https://discordapp.com/developers/appl
 
     ```sh
     # Install Windows build tools (if you didn't install build tools with Node)
-    npm install --global --production windows-build-tools
+    npm install --global windows-build-tools
     # NPM install non-development packages
-    npm install --production
+    npm install
     # Build the Typescript
     npm run build
     ```
@@ -98,7 +98,7 @@ wget -qO- https://raw.githubusercontent.com/creationix/nvm/v0.33.11/install.sh |
 nvm install node
 
 # NPM install non-development packages
-npm install --production
+npm install
 
 # If you run into build errors, install the following packages:
 sudo apt-get install python -y

@@ -142,6 +142,12 @@ npm start
 
 ## Changelog
 
+### 0.7.3
+
+* Fix crash when fetched messages is empty
+* Update docs
+* Update dependencies
+
 ### 0.7.2
 
 * Fix @everyone replacement

@@ -8,6 +8,7 @@ import Markov, {
   MarkovGenerateOptions,
   MarkovResult,
   MarkovConstructorOptions,
+  MarkovImportExport,
 } from 'markov-strings';
 
 import * as schedule from 'node-schedule';
@@ -110,15 +111,15 @@ function regenMarkov(): void {
     markovDB.splice(removeIndex, 1);
   });
   deletionCache = [];
-  const markov = new Markov(markovDB, markovOpts);
+  const markov = new Markov(markovOpts);
   fileObj.messages = markovDB;
   // console.log("WRITING THE FOLLOWING DATA:")
   // console.log(fileObj)
   fs.writeFileSync('config/markovDB.json', JSON.stringify(fileObj), 'utf-8');
   fileObj.messages = [];
   messageCache = [];
-  markov.buildCorpus();
-  fs.writeFileSync('config/markov.json', JSON.stringify(markov));
+  markov.addData(markovDB);
+  fs.writeFileSync('config/markov.json', JSON.stringify(markov.export()));
   console.log('Done regenerating Markov corpus.');
 }
 
@@ -267,11 +268,11 @@ function generateResponse(message: Discord.Message, debug = false, tts = message
     maxTries: MAX_TRIES,
   };
 
-  const fsMarkov = new Markov([''], markovOpts);
-  const markovFile = JSON.parse(fs.readFileSync('config/markov.json', 'utf-8')) as Markov;
-  fsMarkov.corpus = markovFile.corpus;
-  fsMarkov.startWords = markovFile.startWords;
-  fsMarkov.endWords = markovFile.endWords;
+  const fsMarkov = new Markov();
+  const markovFile = JSON.parse(
+    fs.readFileSync('config/markov.json', 'utf-8')
+  ) as MarkovImportExport;
+  fsMarkov.import(markovFile);
 
   try {
     const myResult = fsMarkov.generate(options) as MarkbotMarkovResult;

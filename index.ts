@@ -221,7 +221,7 @@ async function fetchMessages(message: Discord.Message): Promise<void> {
       string,
       Discord.Message
       // eslint-disable-next-line no-await-in-loop
-    > = await message.channel.fetchMessages({
+    > = await message.channel.messages.fetch({
       before: oldestMessageID,
       limit: PAGE_SIZE,
     });
@@ -238,10 +238,11 @@ async function fetchMessages(message: Discord.Message): Promise<void> {
         return dbObj;
       });
     historyCache = historyCache.concat(nonBotMessageFormatted);
-    if (!messages.last() || messages.size < PAGE_SIZE) {
+    const lastMessage = messages.last();
+    if (!lastMessage || messages.size < PAGE_SIZE) {
       keepGoing = false;
     } else {
-      oldestMessageID = messages.last().id;
+      oldestMessageID = lastMessage.id;
     }
   }
   console.log(`Trained from ${historyCache.length} past human authored messages.`);
@@ -303,7 +304,7 @@ function generateResponse(message: Discord.Message, debug = false, tts = message
 
 client.on('ready', () => {
   console.log('Markbot by Charlie Laabs');
-  client.user.setActivity(GAME);
+  if (client.user) client.user.setActivity(GAME);
   regenMarkov();
 });
 
@@ -322,9 +323,10 @@ client.on('message', message => {
   if (message.guild) {
     const command = validateMessage(message);
     if (command === 'help') {
-      const richem = new Discord.RichEmbed()
-        .setAuthor(client.user.username, client.user.avatarURL)
-        .setThumbnail(client.user.avatarURL)
+      const avatarURL = client.user?.avatarURL() || undefined;
+      const richem = new Discord.MessageEmbed()
+        .setAuthor(client.user?.username, avatarURL)
+        .setThumbnail(avatarURL as string)
         .setDescription('A Markov chain chatbot that speaks based on previous chat input.')
         .addField(
           '!mark',
@@ -353,7 +355,7 @@ client.on('message', message => {
       });
     }
     if (command === 'train') {
-      if (isModerator(message.member)) {
+      if (message.member && isModerator(message.member)) {
         console.log('Training...');
         fileObj = {
           messages: [],
@@ -385,18 +387,19 @@ client.on('message', message => {
           dbObj.attachment = message.attachments.values().next().value.url;
         }
         messageCache.push(dbObj);
-        if (message.isMentioned(client.user)) {
+        if (client.user && message.mentions.has(client.user)) {
           generateResponse(message);
         }
       }
     }
     if (command === inviteCmd) {
-      const richem = new Discord.RichEmbed()
-        .setAuthor(`Invite ${client.user.username}`, client.user.avatarURL)
-        .setThumbnail(client.user.avatarURL)
+      const avatarURL = client.user?.avatarURL() || undefined;
+      const richem = new Discord.MessageEmbed()
+        .setAuthor(`Invite ${client.user?.username}`, avatarURL)
+        .setThumbnail(avatarURL as string)
         .addField(
           'Invite',
-          `[Invite ${client.user.username} to your server](https://discordapp.com/oauth2/authorize?client_id=${client.user.id}&scope=bot)`
+          `[Invite ${client.user?.username} to your server](https://discordapp.com/oauth2/authorize?client_id=${client.user?.id}&scope=bot)`
         );
 
       message.channel.send(richem).catch(() => {

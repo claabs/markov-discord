@@ -26,12 +26,12 @@
   "license": "MIT",
   "dependencies": {
     "bufferutil": "^4.0.1",
-    "discord.js": "^11.5.1",
+    "discord.js": "^12.3.1",
     "erlpack": "^0.1.3",
     "markov-strings": "^2.1.0",
     "node-schedule": "^1.3.2",
     "source-map-support": "^0.5.16",
-    "zlib-sync": "^0.1.6"
+    "zlib-sync": "^0.1.7"
   },
   "engines": {
     "node": ">=12.0.0"

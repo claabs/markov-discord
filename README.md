@@ -84,11 +84,12 @@ Create a file called `config.json` in the project directory with the contents:
 {
   "prefix":"!mark",
   "game":"\"!mark help\" for help",
-  "token":"k5NzE2NDg1MTIwMjc0ODQ0Nj.DSnXwg.ttNotARealToken5p3WfDoUxhiH"
+  "token":"k5NzE2NDg1MTIwMjc0ODQ0Nj.DSnXwg.ttNotARealToken5p3WfDoUxhiH",
+  "role": "Bot users"
 }
 ```
 
-Feel free to change the command prefix, game display. Add your bot token.
+Feel free to change the command prefix, game display. Add your bot token. Role is optional, if it is set, only the users who have that role can use text generation.
 
 #### Install and Run
 

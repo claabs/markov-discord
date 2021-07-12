@@ -34,6 +34,7 @@ interface MarkbotConfig {
   prefix?: string;
   game?: string;
   token?: string;
+  role?: string;
 }
 
 const version: string = JSON.parse(fs.readFileSync('./package.json', 'utf8')).version || '0.0.0';
@@ -46,6 +47,7 @@ const PAGE_SIZE = 100;
 // let guilds = [];
 // let connected = -1;
 let GAME = '!mark help';
+let ROLE: string | null;
 let PREFIX = '!mark';
 let STATE_SIZE = 2; // Value of 1 to 3, based on corpus quality
 let MAX_TRIES = 1000;
@@ -147,6 +149,7 @@ function loadConfig(): void {
     STATE_SIZE = cfg.stateSize || STATE_SIZE;
     MIN_SCORE = cfg.minScore || MIN_SCORE;
     MAX_TRIES = cfg.maxTries || MAX_TRIES;
+    ROLE = cfg.role || null;
   } catch (e) {
     console.warn('Failed to read config.json.');
     token = process.env.TOKEN || token;
@@ -388,7 +391,13 @@ client.on('message', message => {
           dbObj.attachment = message.attachments.values().next().value.url;
         }
         messageCache.push(dbObj);
-        if (client.user && message.mentions.has(client.user)) {
+        let send = true;
+        if (ROLE) {
+          let roles = message.member?.roles.cache.map(role => role.name);
+          send = roles?.includes(ROLE) || false;
+        }
+
+        if (send && client.user && message.mentions.has(client.user)) {
           generateResponse(message);
         }
       }

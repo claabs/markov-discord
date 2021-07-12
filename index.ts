@@ -369,7 +369,15 @@ client.on('message', message => {
       }
     }
     if (command === 'respond') {
-      generateResponse(message);
+      let send = true;
+      if (ROLE != null) {
+        let roles = message.member?.roles.cache.map(role => role.name);
+        send = roles?.includes(ROLE) || false;
+      }
+
+      if (send) {
+        generateResponse(message);
+      }
     }
     if (command === 'tts') {
       generateResponse(message, false, true);
@@ -391,13 +399,7 @@ client.on('message', message => {
           dbObj.attachment = message.attachments.values().next().value.url;
         }
         messageCache.push(dbObj);
-        let send = true;
-        if (ROLE) {
-          let roles = message.member?.roles.cache.map(role => role.name);
-          send = roles?.includes(ROLE) || false;
-        }
-
-        if (send && client.user && message.mentions.has(client.user)) {
+        if (client.user && message.mentions.has(client.user)) {
           generateResponse(message);
         }
       }

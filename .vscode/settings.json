@@ -13,6 +13,16 @@
     "[typescript]": {
         "editor.formatOnSave": false,
     },
-    "eslint.enable": true,
-    "typescript.tsdk": "node_modules\\typescript\\lib",
+    "[json]": {
+        "files.insertFinalNewline": true
+    },
+    "typescript.tsdk": "node_modules/typescript/lib",
+    "sqltools.connections": [
+        {
+            "previewLimit": 50,
+            "driver": "SQLite",
+            "name": "Local SQLite",
+            "database": "./config/db/db.sqlite3"
+        }
+    ],
 }

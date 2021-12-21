@@ -5,10 +5,10 @@ import { Guild } from './Guild';
 @Entity()
 export class Channel extends BaseEntity {
   @PrimaryColumn()
-  id: string;
+  id: number;
 
   @Column({
-    default: true,
+    default: false,
   })
   listen: boolean;
 

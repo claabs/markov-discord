@@ -5,7 +5,7 @@ import { Channel } from './Channel';
 @Entity()
 export class Guild extends BaseEntity {
   @PrimaryColumn()
-  id: string;
+  id: number;
 
   @OneToMany(() => Channel, (channel) => channel.guild, { onDelete: 'CASCADE', cascade: true })
   channels: Channel[];

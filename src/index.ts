@@ -40,6 +40,13 @@ const markovOpts: MarkovConstructorOptions = {
   stateSize: config.stateSize,
 };
 
+const markovGenerateOptions: MarkovGenerateOptions<MarkovDataCustom> = {
+  filter: (result): boolean => {
+    return result.score >= config.minScore;
+  },
+  maxTries: config.maxTries,
+};
+
 /**
  * #v3-complete
  */
@@ -48,6 +55,20 @@ async function getMarkovByGuildId(guildId: string): Promise<Markov> {
   const markov = new Markov({ id, options: markovOpts });
   await markov.setup(); // Connect the markov instance to the DB to assign it an ID
   return markov;
+}
+
+/**
+ * #v3-complete
+ */
+async function isValidChannel(channelId: string): Promise<boolean> {
+  const id = parseInt(channelId, 10);
+  const channel = await Channel.findOne(id);
+  if (!channel) {
+    L.warn({ channelId }, 'Channel does not exist, setting to valid');
+    await Channel.create({ id }).save();
+    return false;
+  }
+  return channel.listen;
 }
 
 /**
@@ -174,20 +195,25 @@ async function generateResponse(
 ): Promise<void> {
   L.debug('Responding...');
   if (!interaction.guildId) {
-    L.info('Received a message without a guildId');
+    L.debug('Received an interaction without a guildId');
     return;
   }
-  const options: MarkovGenerateOptions<MarkovDataCustom> = {
-    filter: (result): boolean => {
-      return result.score >= config.minScore;
-    },
-    maxTries: config.maxTries,
-  };
-
+  if (!interaction.channelId) {
+    L.debug('Received an interaction without a channelId');
+    return;
+  }
+  const isValid = await isValidChannel(interaction.channelId);
+  if (!isValid) {
+    L.debug(
+      { channelId: interaction.channelId },
+      'Channel is not enabled for listening. Ignoring...'
+    );
+    return;
+  }
   const markov = await getMarkovByGuildId(interaction.guildId);
 
   try {
-    const response = await markov.generate<MarkovDataCustom>(options);
+    const response = await markov.generate<MarkovDataCustom>(markovGenerateOptions);
     L.info({ response }, 'Generated response');
     const messageOpts: Discord.MessageOptions = { tts };
     const attachmentUrls = response.refs
@@ -197,7 +223,6 @@ async function generateResponse(
       const randomRefAttachment = getRandomElement(attachmentUrls);
       messageOpts.files = [randomRefAttachment];
     } else {
-      // TODO: This might not even work
       const randomMessage = await MarkovInputData.createQueryBuilder<
         MarkovInputData<MarkovDataCustom>
       >('input')
@@ -297,19 +322,10 @@ client.on('ready', async (readyClient) => {
 
   await deployCommands(readyClient.user.id);
 
-  const guildsToSave: Guild[] = [];
-  const channelsToSave: Channel[] = [];
-  readyClient.guilds.valueOf().forEach((guild) => {
-    const dbGuild = Guild.create({ id: guild.id });
-    const textChannels = guild.channels.valueOf().filter((channel) => channel.isText());
-    const dbChannels = textChannels.map((channel) =>
-      Channel.create({ id: channel.id, guild: dbGuild })
-    );
-    guildsToSave.push(dbGuild);
-    channelsToSave.push(...dbChannels);
-  });
+  const guildsToSave = readyClient.guilds
+    .valueOf()
+    .map((guild) => Guild.create({ id: parseInt(guild.id, 10) }));
   await Guild.upsert(guildsToSave, ['id']);
-  await Channel.upsert(channelsToSave, ['id']); // TODO: ensure this doesn't overwrite the existing `listen`
 });
 
 client.on('error', (err) => {

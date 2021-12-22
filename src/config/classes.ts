@@ -37,11 +37,21 @@ export class AppConfig {
    * The command prefix used to trigger the bot commands (when not using slash commands)
    * @example !bot
    * @default !mark
-   * @env CRON_SCHEDULE
+   * @env MESSAGE_COMMAND_PREFIX
    */
   @IsOptional()
   @IsString()
-  commandPrefix = process.env.COMMAND_PREFIX || '!mark';
+  messageCommandPrefix = process.env.MESSAGE_COMMAND_PREFIX || '!mark';
+
+  /**
+   * The slash command name to generate a message from the bot. (e.g. `/mark`)
+   * @example message
+   * @default mark
+   * @env SLASH_COMMAND_NAME
+   */
+  @IsOptional()
+  @IsString()
+  slashCommandName = process.env.SLASH_COMMAND_NAME || 'mark';
 
   /**
    * The activity status shown under the bot's name in the user list

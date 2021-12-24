@@ -4,8 +4,8 @@ import { Guild } from './Guild';
 
 @Entity()
 export class Channel extends BaseEntity {
-  @PrimaryColumn()
-  id: number;
+  @PrimaryColumn({ type: 'text' })
+  id: string;
 
   @Column({
     default: false,

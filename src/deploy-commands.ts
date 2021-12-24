@@ -4,7 +4,7 @@ import { ChannelType, Routes } from 'discord-api-types/v9';
 import { config } from './config';
 import { packageJson } from './util';
 
-const CHANNEL_OPTIONS_MAX = 25;
+export const CHANNEL_OPTIONS_MAX = 25;
 
 export const helpCommand = new SlashCommandBuilder()
   .setName('help')

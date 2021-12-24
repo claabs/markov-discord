@@ -241,7 +241,8 @@ async function generateResponse(
 
   try {
     const response = await markov.generate<MarkovDataCustom>(markovGenerateOptions);
-    L.info({ response }, 'Generated response');
+    L.info({ string: response.string }, 'Generated response text');
+    L.debug({ response }, 'Generated response object');
     const messageOpts: Discord.MessageOptions = { tts };
     const attachmentUrls = response.refs
       .filter((ref) => ref.custom && 'attachments' in ref.custom)
@@ -373,13 +374,14 @@ client.on('guildCreate', async (guild) => {
   await Guild.upsert(Guild.create({ id: guild.id }), ['id']);
 });
 
-client.on('error', (err) => {
-  L.error(err);
-});
+client.on('debug', (m) => L.trace(m));
+client.on('warn', (m) => L.warn(m));
+client.on('error', (m) => L.error(m));
 
 client.on('messageCreate', async (message) => {
   if (!(message.guild && message.channel instanceof Discord.TextChannel)) return;
   const command = validateMessage(message);
+  if (command !== null) L.info({ command }, 'Recieved message command');
   if (command === 'help') {
     await message.channel.send(helpMessage());
   }
@@ -417,7 +419,7 @@ client.on('messageCreate', async (message) => {
 
 client.on('messageDelete', async (message) => {
   if (message.author?.bot) return;
-  L.info(`Deleting message ${message.id}`);
+  L.debug(`Deleting message ${message.id}`);
   if (!(message.guildId && message.content)) {
     return;
   }
@@ -427,7 +429,7 @@ client.on('messageDelete', async (message) => {
 
 client.on('messageUpdate', async (oldMessage, newMessage) => {
   if (oldMessage.author?.bot) return;
-  L.info(`Editing message ${oldMessage.id}`);
+  L.debug(`Editing message ${oldMessage.id}`);
   if (!(oldMessage.guildId && oldMessage.content && newMessage.content)) {
     return;
   }
@@ -438,6 +440,8 @@ client.on('messageUpdate', async (oldMessage, newMessage) => {
 
 client.on('interactionCreate', async (interaction) => {
   if (!interaction.isCommand()) return;
+
+  L.info({ command: interaction.commandName }, 'Recieved slash command');
 
   if (interaction.commandName === helpCommand.name) {
     await interaction.reply(helpMessage());

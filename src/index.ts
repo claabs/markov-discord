@@ -174,6 +174,9 @@ async function saveGuildMessageHistory(
     return 'No channels configured to learn from. Set some with `/listen add`.';
   }
 
+  L.debug('Deleting old data');
+  await markov.delete();
+
   const channelIds = channels.map((c) => c.id);
   L.debug({ channelIds }, `Training from text channels`);
 
@@ -501,9 +504,6 @@ async function main(): Promise<void> {
   const connection = await Markov.extendConnectionOptions();
   await createConnection(connection);
   await client.login(config.token);
-
-  // Move config if in legacy location
-  // TODO: import legacy DB?
 }
 
 main();

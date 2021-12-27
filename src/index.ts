@@ -354,20 +354,31 @@ function helpMessage(): Discord.MessageOptions {
   };
 }
 
+function generateInviteUrl(): string {
+  return client.generateInvite({
+    scopes: ['bot', 'applications.commands'],
+    permissions: [
+      'VIEW_CHANNEL',
+      'SEND_MESSAGES',
+      'SEND_TTS_MESSAGES',
+      'ATTACH_FILES',
+      'READ_MESSAGE_HISTORY',
+    ],
+  });
+}
+
 function inviteMessage(): Discord.MessageOptions {
   const avatarURL = client.user.avatarURL() || undefined;
+  const inviteUrl = generateInviteUrl();
   const embed = new Discord.MessageEmbed()
     .setAuthor(`Invite ${client.user?.username}`, avatarURL)
     .setThumbnail(avatarURL as string)
-    .addField(
-      'Invite',
-      `[Invite ${client.user.username} to your server](https://discord.com/api/oauth2/authorize?client_id=${client.user.id}&permissions=105472&scope=bot%20applications.commands)`
-    );
+    .addField('Invite', `[Invite ${client.user.username} to your server](${inviteUrl})`);
   return { embeds: [embed] };
 }
 
 client.on('ready', async (readyClient) => {
-  L.info('Bot logged in');
+  L.info({ inviteUrl: generateInviteUrl() }, 'Bot logged in');
 
   await deployCommands(readyClient.user.id);
 

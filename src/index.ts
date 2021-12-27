@@ -12,6 +12,7 @@ import Markov, {
 import { createConnection } from 'typeorm';
 import { MarkovInputData } from 'markov-strings-db/dist/src/entity/MarkovInputData';
 import { APIInteractionGuildMember } from 'discord-api-types';
+import type { PackageJsonPerson } from 'types-package-json';
 import L from './logger';
 import { Channel } from './entity/Channel';
 import { Guild } from './entity/Guild';
@@ -345,7 +346,9 @@ function helpMessage(): Discord.MessageOptions {
       `${config.messageCommandPrefix} tts or /${messageCommand.name} tts: True`,
       `Runs the ${config.messageCommandPrefix} command and reads it with text-to-speech.`
     )
-    .setFooter(`${packageJson().name} ${getVersion()} by ${packageJson().author}`);
+    .setFooter(
+      `${packageJson().name} ${getVersion()} by ${(packageJson().author as PackageJsonPerson).name}`
+    );
   return {
     embeds: [embed],
   };

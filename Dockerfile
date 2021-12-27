@@ -2,45 +2,49 @@
 # BASE
 ########
 FROM node:16-alpine3.14 as base
-WORKDIR /usr/src/app
 
-COPY package*.json ./
-# Install build tools for erlpack, then install prod deps only, then remove build tools
-RUN apk add --no-cache make gcc g++ python && \
-    npm ci --only=production && \
-    apk del make gcc g++ python
+WORKDIR /usr/src/app
 
 ########
 # BUILD
 ########
 FROM base as build
 
-# Copy all *.json, *.js, *.ts
-COPY . .
-# Prod deps already installed, add dev deps
-RUN npm i
+COPY package*.json ./
+# Install build tools for erlpack, then install prod deps only
+RUN apk add --no-cache make gcc g++ python3 \
+    && npm ci --only=production
+
+# Copy all jsons
+COPY package*.json tsconfig.json ./
+
+# Add dev deps
+RUN npm ci
+
+# Copy source code
+COPY src src
 
 RUN npm run build
 
 ########
 # DEPLOY
 ########
-FROM node:16-alpine3.14 as deploy
-WORKDIR /usr/src/app
-
-ENV NPM_CONFIG_LOGLEVEL warn
+FROM base as deploy
 
 # Steal node_modules from base image
-COPY --from=base /usr/src/app/node_modules ./node_modules/
+COPY --from=build /usr/src/app/node_modules node_modules
 
 # Steal compiled code from build image
-COPY --from=build /usr/src/app/dist ./
+COPY --from=build /usr/src/app/dist dist
 
 # Copy package.json for version number
-COPY package*.json ./
+COPY package*.json ormconfig.js ./
 
-RUN mkdir config
+# RUN mkdir config
 
-# RUN ls -al
+ARG COMMIT_SHA=""
 
-CMD [ "pm2-runtime", "start", "ecosystem.config.js" ]
+ENV NODE_ENV=production \
+    COMMIT_SHA=${COMMIT_SHA}
+
+CMD [ "node", "/usr/src/app/dist/index.js" ]

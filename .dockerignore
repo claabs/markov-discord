@@ -1,7 +1,3 @@
-# Ignore everything
-**/*
-
-# Allow files and directories
-!*.js
-!*.json
-!*.ts
+config
+dist
+node_modules

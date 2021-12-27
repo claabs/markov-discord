@@ -2,13 +2,14 @@
   "name": "markov-discord",
   "version": "2.0.0",
   "description": "A conversational Markov chain bot for Discord",
-  "main": "index.js",
+  "main": "dist/index.js",
   "scripts": {
     "start": "node dist/index.js",
     "start:ts": "ts-node src/index.ts",
     "build": "rimraf dist && tsc",
     "lint": "tsc --noEmit && eslint **/*.ts *.js",
-    "docker-up": "docker run --rm -e TOKEN=abc123 -it $(docker build -q .)"
+    "docker:build": "docker build . -t charlocharlie/markov-discord:latest --target deploy",
+    "docker:run": "docker run --rm -ti -v $(pwd)/config:/usr/src/app/config charlocharlie/markov-discord:latest"
   },
   "repository": "https://github.com/claabs/markov-discord.git",
   "keywords": [

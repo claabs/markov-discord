@@ -568,38 +568,40 @@ client.on('interactionCreate', async (interaction) => {
       await interaction.editReply(responseMessage);
     }
   } else if (interaction.isSelectMenu()) {
-    await interaction.deferUpdate();
-    const { guild } = interaction;
-    if (!isModerator(interaction.member)) {
-      await interaction.followUp({ content: INVALID_PERMISSIONS_MESSAGE, ephemeral: true });
-      return;
+    if (interaction.customId === 'listen-modify-select') {
+      await interaction.deferUpdate();
+      const { guild } = interaction;
+      if (!isModerator(interaction.member)) {
+        await interaction.followUp({ content: INVALID_PERMISSIONS_MESSAGE, ephemeral: true });
+        return;
+      }
+      if (!guild) {
+        await interaction.deleteReply();
+        await interaction.followUp({ content: INVALID_GUILD_MESSAGE, ephemeral: true });
+        return;
+      }
+
+      const allChannels =
+        (interaction.component as APISelectMenuComponent).options?.map((o) => o.value) || [];
+      const selectedChannelIds = interaction.values;
+
+      const textChannels = (
+        await Promise.all(
+          allChannels.map(async (c) => {
+            return guild.channels.fetch(c);
+          })
+        )
+      ).filter((c): c is Discord.TextChannel => c !== null && c instanceof Discord.TextChannel);
+      const unselectedChannels = textChannels.filter((t) => !selectedChannelIds.includes(t.id));
+      const selectedChannels = textChannels.filter((t) => selectedChannelIds.includes(t.id));
+      await addValidChannels(selectedChannels, guild.id);
+      await removeValidChannels(unselectedChannels, guild.id);
+
+      await interaction.followUp({
+        content: 'Updated actively listened to channels list.',
+        ephemeral: true,
+      });
     }
-    if (!guild) {
-      await interaction.deleteReply();
-      await interaction.followUp({ content: INVALID_GUILD_MESSAGE, ephemeral: true });
-      return;
-    }
-
-    const allChannels =
-      (interaction.component as APISelectMenuComponent).options?.map((o) => o.value) || [];
-    const selectedChannelIds = interaction.values;
-
-    const textChannels = (
-      await Promise.all(
-        allChannels.map(async (c) => {
-          return guild.channels.fetch(c);
-        })
-      )
-    ).filter((c): c is Discord.TextChannel => c !== null && c instanceof Discord.TextChannel);
-    const unselectedChannels = textChannels.filter((t) => !selectedChannelIds.includes(t.id));
-    const selectedChannels = textChannels.filter((t) => selectedChannelIds.includes(t.id));
-    await addValidChannels(selectedChannels, guild.id);
-    await removeValidChannels(unselectedChannels, guild.id);
-
-    await interaction.followUp({
-      content: 'Updated actively listened to channels list.',
-      ephemeral: true,
-    });
   }
 });
 

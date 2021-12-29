@@ -66,6 +66,11 @@ export const listenChannelCommand = new SlashCommandBuilder()
     sub
       .setName('list')
       .setDescription(`List the channels the bot is currently actively listening to.`)
+  )
+  .addSubcommand((sub) =>
+    sub
+      .setName('modify')
+      .setDescription(`Add or remove channels via select menu UI (first 25 text channels only)`)
   );
 
 export const trainCommand = new SlashCommandBuilder()

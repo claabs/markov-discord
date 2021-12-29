@@ -11,8 +11,11 @@ import Markov, {
 
 import { createConnection } from 'typeorm';
 import { MarkovInputData } from 'markov-strings-db/dist/src/entity/MarkovInputData';
-import { APIInteractionGuildMember } from 'discord-api-types';
 import type { PackageJsonPerson } from 'types-package-json';
+import {
+  APISelectMenuComponent,
+  APIInteractionGuildMember,
+} from 'discord.js/node_modules/discord-api-types';
 import L from './logger';
 import { Channel } from './entity/Channel';
 import { Guild } from './entity/Guild';
@@ -30,6 +33,12 @@ import { getRandomElement, getVersion, packageJson } from './util';
 
 interface MarkovDataCustom {
   attachments: string[];
+}
+
+interface SelectMenuChannel {
+  id: string;
+  listen?: boolean;
+  name?: string;
 }
 
 const INVALID_PERMISSIONS_MESSAGE = 'You do not have the permissions for this action.';
@@ -75,6 +84,25 @@ async function getValidChannels(guild: Discord.Guild): Promise<Discord.TextChann
     )
   ).filter((c): c is Discord.TextChannel => c !== null && c instanceof Discord.TextChannel);
   return channels;
+}
+
+async function getTextChannels(guild: Discord.Guild): Promise<SelectMenuChannel[]> {
+  const MAX_SELECT_OPTIONS = 25;
+  const textChannels = guild.channels.cache.filter(
+    (c): c is Discord.TextChannel => c !== null && c instanceof Discord.TextChannel
+  );
+  const foundDbChannels = await Channel.findByIds(Array.from(textChannels.keys()));
+  const foundDbChannelsWithName: SelectMenuChannel[] = foundDbChannels.map((c) => ({
+    ...c,
+    name: textChannels.find((t) => t.id === c.id)?.name,
+  }));
+  const notFoundDbChannels: SelectMenuChannel[] = textChannels
+    .filter((c) => !foundDbChannels.find((d) => d.id === c.id))
+    .map((c) => ({ id: c.id, listen: false, name: textChannels.find((t) => t.id === c.id)?.name }));
+  const limitedDbChannels = foundDbChannelsWithName
+    .concat(notFoundDbChannels)
+    .slice(0, MAX_SELECT_OPTIONS);
+  return limitedDbChannels;
 }
 
 async function addValidChannels(channels: Discord.TextChannel[], guildId: string): Promise<void> {
@@ -165,7 +193,7 @@ function messageToData(message: Discord.Message): AddDataProps {
 async function saveGuildMessageHistory(
   interaction: Discord.Message | Discord.CommandInteraction
 ): Promise<string> {
-  if (!isModerator(interaction.member as any)) return INVALID_PERMISSIONS_MESSAGE;
+  if (!isModerator(interaction.member)) return INVALID_PERMISSIONS_MESSAGE;
   if (!interaction.guildId || !interaction.guild) return INVALID_GUILD_MESSAGE;
   const markov = await getMarkovByGuildId(interaction.guildId);
   const channels = await getValidChannels(interaction.guild);
@@ -456,58 +484,122 @@ client.on('messageUpdate', async (oldMessage, newMessage) => {
 });
 
 client.on('interactionCreate', async (interaction) => {
-  if (!interaction.isCommand()) return;
+  if (interaction.isCommand()) {
+    L.info({ command: interaction.commandName }, 'Recieved slash command');
 
-  L.info({ command: interaction.commandName }, 'Recieved slash command');
+    if (interaction.commandName === helpCommand.name) {
+      await interaction.reply(helpMessage());
+    } else if (interaction.commandName === inviteCommand.name) {
+      await interaction.reply(inviteMessage());
+    } else if (interaction.commandName === messageCommand.name) {
+      await interaction.deferReply();
+      const tts = interaction.options.getBoolean('tts') || false;
+      const debug = interaction.options.getBoolean('debug') || false;
+      const generatedResponse = await generateResponse(interaction, debug, tts);
+      if (generatedResponse.message) await interaction.editReply(generatedResponse.message);
+      else await interaction.deleteReply();
+      if (generatedResponse.debug) await interaction.followUp(generatedResponse.debug);
+      if (generatedResponse.error) {
+        await interaction.followUp({ ...generatedResponse.error, ephemeral: true });
+      }
+    } else if (interaction.commandName === listenChannelCommand.name) {
+      await interaction.deferReply();
+      const subCommand = interaction.options.getSubcommand(true) as 'add' | 'remove' | 'list';
+      if (subCommand === 'list') {
+        const reply = await listValidChannels(interaction);
+        await interaction.editReply(reply);
+      } else if (subCommand === 'add') {
+        if (!isModerator(interaction.member)) {
+          await interaction.deleteReply();
+          await interaction.followUp({ content: INVALID_PERMISSIONS_MESSAGE, ephemeral: true });
+          return;
+        }
+        const channels = getChannelsFromInteraction(interaction);
+        await addValidChannels(channels, interaction.guildId);
+        await interaction.editReply(
+          `Added ${channels.length} text channels to the list. Use \`/train\` to update the past known messages.`
+        );
+      } else if (subCommand === 'remove') {
+        if (!isModerator(interaction.member)) {
+          await interaction.deleteReply();
+          await interaction.followUp({ content: INVALID_PERMISSIONS_MESSAGE, ephemeral: true });
+          return;
+        }
+        const channels = getChannelsFromInteraction(interaction);
+        await removeValidChannels(channels, interaction.guildId);
+        await interaction.editReply(
+          `Removed ${channels.length} text channels from the list. Use \`/train\` to remove these channels from the past known messages.`
+        );
+      } else if (subCommand === 'modify') {
+        await interaction.deleteReply();
+        if (!interaction.guild) {
+          await interaction.followUp({ content: INVALID_GUILD_MESSAGE, ephemeral: true });
+          return;
+        }
+        if (!isModerator(interaction.member)) {
+          await interaction.followUp({ content: INVALID_PERMISSIONS_MESSAGE, ephemeral: true });
+          return;
+        }
+        const dbTextChannels = await getTextChannels(interaction.guild);
+        const row = new Discord.MessageActionRow().addComponents(
+          new Discord.MessageSelectMenu()
+            .setCustomId('listen-modify-select')
+            .setPlaceholder('Nothing selected')
+            .setMinValues(0)
+            .setMaxValues(dbTextChannels.length)
+            .addOptions(
+              dbTextChannels.map((c) => ({
+                label: `#${c.name}` || c.id,
+                value: c.id,
+                default: c.listen || false,
+              }))
+            )
+        );
 
-  if (interaction.commandName === helpCommand.name) {
-    await interaction.reply(helpMessage());
-  } else if (interaction.commandName === inviteCommand.name) {
-    await interaction.reply(inviteMessage());
-  } else if (interaction.commandName === messageCommand.name) {
-    await interaction.deferReply();
-    const tts = interaction.options.getBoolean('tts') || false;
-    const debug = interaction.options.getBoolean('debug') || false;
-    const generatedResponse = await generateResponse(interaction, debug, tts);
-    if (generatedResponse.message) await interaction.editReply(generatedResponse.message);
-    else await interaction.deleteReply();
-    if (generatedResponse.debug) await interaction.followUp(generatedResponse.debug);
-    if (generatedResponse.error) {
-      await interaction.followUp({ ...generatedResponse.error, ephemeral: true });
-    }
-  } else if (interaction.commandName === listenChannelCommand.name) {
-    await interaction.deferReply();
-    const subCommand = interaction.options.getSubcommand(true) as 'add' | 'remove' | 'list';
-    if (subCommand === 'list') {
-      const reply = await listValidChannels(interaction);
-      await interaction.editReply(reply);
-    } else if (subCommand === 'add') {
-      if (!isModerator(interaction.member as any)) {
-        await interaction.deleteReply();
-        await interaction.followUp({ content: INVALID_PERMISSIONS_MESSAGE, ephemeral: true });
-        return;
+        await interaction.followUp({
+          content: 'Select which channels you would like to the bot to actively listen to',
+          components: [row],
+          ephemeral: true,
+        });
       }
-      const channels = getChannelsFromInteraction(interaction);
-      await addValidChannels(channels, interaction.guildId);
-      await interaction.editReply(
-        `Added ${channels.length} text channels to the list. Use \`/train\` to update the past known messages.`
-      );
-    } else if (subCommand === 'remove') {
-      if (!isModerator(interaction.member as any)) {
-        await interaction.deleteReply();
-        await interaction.followUp({ content: INVALID_PERMISSIONS_MESSAGE, ephemeral: true });
-        return;
-      }
-      const channels = getChannelsFromInteraction(interaction);
-      await removeValidChannels(channels, interaction.guildId);
-      await interaction.editReply(
-        `Removed ${channels.length} text channels from the list. Use \`/train\` to remove these channels from the past known messages.`
-      );
+    } else if (interaction.commandName === trainCommand.name) {
+      await interaction.deferReply();
+      const responseMessage = await saveGuildMessageHistory(interaction);
+      await interaction.editReply(responseMessage);
     }
-  } else if (interaction.commandName === trainCommand.name) {
-    await interaction.deferReply();
-    const responseMessage = await saveGuildMessageHistory(interaction);
-    await interaction.editReply(responseMessage);
+  } else if (interaction.isSelectMenu()) {
+    await interaction.deferUpdate();
+    const { guild } = interaction;
+    if (!isModerator(interaction.member)) {
+      await interaction.followUp({ content: INVALID_PERMISSIONS_MESSAGE, ephemeral: true });
+      return;
+    }
+    if (!guild) {
+      await interaction.deleteReply();
+      await interaction.followUp({ content: INVALID_GUILD_MESSAGE, ephemeral: true });
+      return;
+    }
+
+    const allChannels =
+      (interaction.component as APISelectMenuComponent).options?.map((o) => o.value) || [];
+    const selectedChannelIds = interaction.values;
+
+    const textChannels = (
+      await Promise.all(
+        allChannels.map(async (c) => {
+          return guild.channels.fetch(c);
+        })
+      )
+    ).filter((c): c is Discord.TextChannel => c !== null && c instanceof Discord.TextChannel);
+    const unselectedChannels = textChannels.filter((t) => !selectedChannelIds.includes(t.id));
+    const selectedChannels = textChannels.filter((t) => selectedChannelIds.includes(t.id));
+    await addValidChannels(selectedChannels, guild.id);
+    await removeValidChannels(unselectedChannels, guild.id);
+
+    await interaction.followUp({
+      content: 'Updated actively listened to channels list.',
+      ephemeral: true,
+    });
   }
 });
 

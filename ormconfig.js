@@ -26,7 +26,7 @@ const prodConfig = {
   enableWAL: true,
   entities: ['dist/entity/**/*.js'],
   migrations: ['dist/migration/**/*.js'],
-  migrationsRun: false,
+  migrationsRun: true,
   subscribers: ['dist/subscriber/**/*.js'],
   cli: {
     entitiesDir: 'dist/entity',

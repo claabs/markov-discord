@@ -31,5 +31,5 @@ module.exports = {
       }
     }
   },
-  ignorePatterns: ['dist/**', 'node_modules/**', '.eslintrc.js']
+  ignorePatterns: ['dist/**', 'node_modules/**', '.eslintrc.js', 'src/migration/**']
 }

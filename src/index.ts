@@ -16,6 +16,9 @@ import {
   APISelectMenuComponent,
   APIInteractionGuildMember,
 } from 'discord.js/node_modules/discord-api-types';
+import makeEta from 'simple-eta';
+import formatDistanceToNow from 'date-fns/formatDistanceToNow';
+import addSeconds from 'date-fns/addSeconds';
 import L from './logger';
 import { Channel } from './entity/Channel';
 import { Guild } from './entity/Guild';
@@ -209,13 +212,53 @@ async function saveGuildMessageHistory(
   const channelIds = channels.map((c) => c.id);
   L.debug({ channelIds }, `Training from text channels`);
 
+  const messageContent = `Parsing past messages from ${channels.length} channel(s).`;
+
+  const completedChannelsField: Discord.EmbedFieldData = {
+    name: 'Completed Channels',
+    value: 'None',
+    inline: true,
+  };
+  const currentChannelField: Discord.EmbedFieldData = {
+    name: 'Current Channel',
+    value: `<#${channels[0].id}>`,
+    inline: true,
+  };
+  const currentChannelPercent: Discord.EmbedFieldData = {
+    name: 'Channel Progress',
+    value: '0%',
+    inline: true,
+  };
+  const currentChannelEta: Discord.EmbedFieldData = {
+    name: 'Channel Time Remaining',
+    value: 'Pending...',
+    inline: true,
+  };
+  const embedOptions: Discord.MessageEmbedOptions = {
+    title: 'Training Progress',
+    fields: [completedChannelsField, currentChannelField, currentChannelPercent, currentChannelEta],
+  };
+  const embed = new Discord.MessageEmbed(embedOptions);
+  let progressMessage: Discord.Message;
+  const updateMessageData = { content: messageContent, embeds: [embed] };
+  if (interaction instanceof Discord.Message) {
+    progressMessage = await interaction.reply(updateMessageData);
+  } else {
+    progressMessage = (await interaction.followUp(updateMessageData)) as Discord.Message;
+  }
+
   const PAGE_SIZE = 100;
+  const UPDATE_RATE = 1000; // In number of messages processed
+  let lastUpdate = 0;
   let messagesCount = 0;
+  let firstMessageDate: number | undefined;
   // eslint-disable-next-line no-restricted-syntax
   for (const channel of channels) {
     let oldestMessageID: string | undefined;
     let keepGoing = true;
     L.debug({ channelId: channel.id, messagesCount }, `Training from channel`);
+    const channelCreateDate = channel.createdTimestamp;
+    const channelEta = makeEta({ autostart: true, min: 0, max: 1, historyTimeConstant: 10 });
 
     while (keepGoing) {
       // eslint-disable-next-line no-await-in-loop
@@ -230,10 +273,42 @@ async function saveGuildMessageHistory(
       L.trace('Finished saving messages');
       messagesCount += nonBotMessageFormatted.length;
       const lastMessage = messages.last();
+
+      // Update tracking metrics
       if (!lastMessage || messages.size < PAGE_SIZE) {
         keepGoing = false;
+        if (completedChannelsField.value === 'None') completedChannelsField.value = '';
+        completedChannelsField.value += `\n • <#${channel.id}>`;
       } else {
         oldestMessageID = lastMessage.id;
+      }
+      currentChannelField.value = `<#${channel.id}>`;
+      if (!firstMessageDate) firstMessageDate = messages.first()?.createdTimestamp;
+      const oldestMessageDate = lastMessage?.createdTimestamp;
+      if (firstMessageDate && oldestMessageDate) {
+        const channelAge = firstMessageDate - channelCreateDate;
+        const lastMessageAge = firstMessageDate - oldestMessageDate;
+        const pctComplete = lastMessageAge / channelAge;
+        currentChannelPercent.value = `${pctComplete.toFixed(2)}%`;
+        channelEta.report(pctComplete);
+        const estimateSeconds = channelEta.estimate();
+        if (Number.isFinite(estimateSeconds))
+          currentChannelEta.value = formatDistanceToNow(addSeconds(new Date(), estimateSeconds), {
+            includeSeconds: true,
+          });
+      }
+
+      if (messagesCount > lastUpdate + UPDATE_RATE) {
+        lastUpdate = messagesCount;
+        L.debug(
+          { messagesCount, pctComplete: currentChannelPercent.value },
+          'Sending metrics update'
+        );
+        // eslint-disable-next-line no-await-in-loop
+        await progressMessage.edit({
+          ...updateMessageData,
+          embeds: [new Discord.MessageEmbed(embedOptions)],
+        });
       }
     }
   }

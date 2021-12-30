@@ -9,7 +9,7 @@
     "build": "rimraf dist && tsc",
     "lint": "tsc --noEmit && eslint **/*.ts *.js",
     "docker:build": "docker build . -t charlocharlie/markov-discord:latest --target deploy",
-    "docker:run": "docker run --rm -ti -v $(pwd)/config:/usr/src/app/config charlocharlie/markov-discord:latest"
+    "docker:run": "docker run --rm -ti -v $(pwd)/config:/usr/app/config charlocharlie/markov-discord:latest"
   },
   "repository": "https://github.com/claabs/markov-discord.git",
   "keywords": [

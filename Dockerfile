@@ -3,7 +3,7 @@
 ########
 FROM node:16-alpine3.14 as base
 
-WORKDIR /usr/src/app
+WORKDIR /usr/app
 
 ########
 # BUILD
@@ -32,10 +32,10 @@ RUN npm run build
 FROM base as deploy
 
 # Steal node_modules from base image
-COPY --from=build /usr/src/app/node_modules node_modules
+COPY --from=build /usr/app/node_modules node_modules
 
 # Steal compiled code from build image
-COPY --from=build /usr/src/app/dist dist
+COPY --from=build /usr/app/dist dist
 
 # Copy package.json for version number
 COPY package*.json ormconfig.js ./
@@ -47,4 +47,4 @@ ARG COMMIT_SHA=""
 ENV NODE_ENV=production \
     COMMIT_SHA=${COMMIT_SHA}
 
-CMD [ "node", "/usr/src/app/dist/index.js" ]
+CMD [ "node", "/usr/app/dist/index.js" ]

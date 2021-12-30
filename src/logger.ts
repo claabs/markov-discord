@@ -1,5 +1,6 @@
 import pino from 'pino';
 import dotenv from 'dotenv';
+import { config } from './config';
 
 dotenv.config();
 
@@ -15,7 +16,7 @@ const logger = pino({
       return { level: label };
     },
   },
-  level: process.env.LOG_LEVEL || 'info',
+  level: config.logLevel,
   base: undefined,
 });
 

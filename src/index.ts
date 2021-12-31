@@ -266,11 +266,18 @@ async function saveGuildMessageHistory(
     const channelEta = makeEta({ autostart: true, min: 0, max: 1, historyTimeConstant: 30 });
 
     while (keepGoing) {
-      // eslint-disable-next-line no-await-in-loop
-      const messages = await channel.messages.fetch({
-        before: oldestMessageID,
-        limit: PAGE_SIZE,
-      });
+      let messages;
+      try {
+        // eslint-disable-next-line no-await-in-loop
+        messages = await channel.messages.fetch({
+          before: oldestMessageID,
+          limit: PAGE_SIZE,
+        });
+      } catch (err) {
+        L.error({ before: oldestMessageID, limit: PAGE_SIZE }, 'Error retreiving messages');
+        L.error(err);
+        break;
+      }
       const nonBotMessageFormatted = messages.filter((elem) => !elem.author.bot).map(messageToData);
       L.trace({ oldestMessageID }, `Saving ${nonBotMessageFormatted.length} messages`);
       // eslint-disable-next-line no-await-in-loop
@@ -524,10 +531,16 @@ client.on('messageCreate', async (message) => {
     if (generatedResponse.error) await message.reply(generatedResponse.error);
   }
   if (command === 'tts') {
-    await generateResponse(message, false, true);
+    const generatedResponse = await generateResponse(message, false, true);
+    if (generatedResponse.message) await message.reply(generatedResponse.message);
+    if (generatedResponse.debug) await message.reply(generatedResponse.debug);
+    if (generatedResponse.error) await message.reply(generatedResponse.error);
   }
   if (command === 'debug') {
-    await generateResponse(message, true);
+    const generatedResponse = await generateResponse(message, true);
+    if (generatedResponse.message) await message.reply(generatedResponse.message);
+    if (generatedResponse.debug) await message.reply(generatedResponse.debug);
+    if (generatedResponse.error) await message.reply(generatedResponse.error);
   }
   if (command === null) {
     if (!message.author.bot) {
@@ -536,7 +549,10 @@ client.on('messageCreate', async (message) => {
       await markov.addData([messageToData(message)]);
 
       if (client.user && message.mentions.has(client.user)) {
-        await generateResponse(message);
+        const generatedResponse = await generateResponse(message);
+        if (generatedResponse.message) await message.reply(generatedResponse.message);
+        if (generatedResponse.debug) await message.reply(generatedResponse.debug);
+        if (generatedResponse.error) await message.reply(generatedResponse.error);
       }
     }
   }

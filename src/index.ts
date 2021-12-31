@@ -258,7 +258,7 @@ async function saveGuildMessageHistory(
     let keepGoing = true;
     L.debug({ channelId: channel.id, messagesCount }, `Training from channel`);
     const channelCreateDate = channel.createdTimestamp;
-    const channelEta = makeEta({ autostart: true, min: 0, max: 1, historyTimeConstant: 10 });
+    const channelEta = makeEta({ autostart: true, min: 0, max: 1, historyTimeConstant: 30 });
 
     while (keepGoing) {
       // eslint-disable-next-line no-await-in-loop

@@ -73,11 +73,13 @@ const markovGenerateOptions: MarkovGenerateOptions<MarkovDataCustom> = {
 
 async function getMarkovByGuildId(guildId: string): Promise<Markov> {
   const markov = new Markov({ id: guildId, options: { ...markovOpts, id: guildId } });
+  L.trace({ guildId }, 'Setting up markov instance');
   await markov.setup(); // Connect the markov instance to the DB to assign it an ID
   return markov;
 }
 
 async function getValidChannels(guild: Discord.Guild): Promise<Discord.TextChannel[]> {
+  L.trace('Getting valid channels from database');
   const dbChannels = await Channel.find({ guild: Guild.create({ id: guild.id }), listen: true });
   const channels = (
     await Promise.all(
@@ -90,6 +92,7 @@ async function getValidChannels(guild: Discord.Guild): Promise<Discord.TextChann
 }
 
 async function getTextChannels(guild: Discord.Guild): Promise<SelectMenuChannel[]> {
+  L.trace('Getting text channels for select menu');
   const MAX_SELECT_OPTIONS = 25;
   const textChannels = guild.channels.cache.filter(
     (c): c is Discord.TextChannel => c !== null && c instanceof Discord.TextChannel
@@ -109,6 +112,7 @@ async function getTextChannels(guild: Discord.Guild): Promise<SelectMenuChannel[
 }
 
 async function addValidChannels(channels: Discord.TextChannel[], guildId: string): Promise<void> {
+  L.trace(`Adding ${channels.length} channels to valid list`);
   const dbChannels = channels.map((c) => {
     return Channel.create({ id: c.id, guild: Guild.create({ id: guildId }), listen: true });
   });
@@ -119,6 +123,7 @@ async function removeValidChannels(
   channels: Discord.TextChannel[],
   guildId: string
 ): Promise<void> {
+  L.trace(`Removing ${channels.length} channels from valid list`);
   const dbChannels = channels.map((c) => {
     return Channel.create({ id: c.id, guild: Guild.create({ id: guildId }), listen: false });
   });

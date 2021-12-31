@@ -289,7 +289,7 @@ async function saveGuildMessageHistory(
         const channelAge = firstMessageDate - channelCreateDate;
         const lastMessageAge = firstMessageDate - oldestMessageDate;
         const pctComplete = lastMessageAge / channelAge;
-        currentChannelPercent.value = `${pctComplete.toFixed(2)}%`;
+        currentChannelPercent.value = `${(pctComplete * 100).toFixed(2)}%`;
         channelEta.report(pctComplete);
         const estimateSeconds = channelEta.estimate();
         if (Number.isFinite(estimateSeconds))

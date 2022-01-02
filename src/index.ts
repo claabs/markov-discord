@@ -344,6 +344,12 @@ interface GenerateResponse {
   error?: Discord.MessageOptions;
 }
 
+interface GenerateOptions {
+  tts?: boolean;
+  debug?: boolean;
+  startSeed?: string;
+}
+
 /**
  * General Markov-chain response function
  * @param interaction The message that invoked the action, used for channel info.
@@ -353,10 +359,10 @@ interface GenerateResponse {
  */
 async function generateResponse(
   interaction: Discord.Message | Discord.CommandInteraction,
-  debug = false,
-  tts = false
+  options?: GenerateOptions
 ): Promise<GenerateResponse> {
-  L.debug('Responding...');
+  L.debug({ options }, 'Responding...');
+  const { tts = false, debug = false, startSeed } = options || {};
   if (!interaction.guildId) {
     L.warn('Received an interaction without a guildId');
     return { message: { content: INVALID_GUILD_MESSAGE } };
@@ -368,6 +374,7 @@ async function generateResponse(
   const markov = await getMarkovByGuildId(interaction.guildId);
 
   try {
+    markovGenerateOptions.startSeed = startSeed;
     const response = await markov.generate<MarkovDataCustom>(markovGenerateOptions);
     L.info({ string: response.string }, 'Generated response text');
     L.debug({ response }, 'Generated response object');
@@ -539,32 +546,34 @@ client.on('messageCreate', async (message) => {
   }
   if (command === 'tts') {
     L.debug('Responding to legacy command tts');
-    const generatedResponse = await generateResponse(message, false, true);
+    const generatedResponse = await generateResponse(message, { tts: true });
     if (generatedResponse.message) await message.reply(generatedResponse.message);
     if (generatedResponse.debug) await message.reply(generatedResponse.debug);
     if (generatedResponse.error) await message.reply(generatedResponse.error);
   }
   if (command === 'debug') {
     L.debug('Responding to legacy command debug');
-    const generatedResponse = await generateResponse(message, true);
+    const generatedResponse = await generateResponse(message, { debug: true });
     if (generatedResponse.message) await message.reply(generatedResponse.message);
     if (generatedResponse.debug) await message.reply(generatedResponse.debug);
     if (generatedResponse.error) await message.reply(generatedResponse.error);
   }
   if (command === null) {
     if (!message.author.bot) {
+      if (client.user && message.mentions.has(client.user)) {
+        L.debug('Responding to mention');
+        // <@!278354154563567636> how are you doing?
+        const startSeed = message.content.replace(/<@!\d+>/g, '').trim();
+        const generatedResponse = await generateResponse(message, { startSeed });
+        if (generatedResponse.message) await message.reply(generatedResponse.message);
+        if (generatedResponse.debug) await message.reply(generatedResponse.debug);
+        if (generatedResponse.error) await message.reply(generatedResponse.error);
+      }
+
       if (await isValidChannel(message.channelId)) {
         L.debug('Listening');
         const markov = await getMarkovByGuildId(message.channel.guildId);
         await markov.addData([messageToData(message)]);
-      }
-
-      if (client.user && message.mentions.has(client.user)) {
-        L.debug('Responding to mention');
-        const generatedResponse = await generateResponse(message);
-        if (generatedResponse.message) await message.reply(generatedResponse.message);
-        if (generatedResponse.debug) await message.reply(generatedResponse.debug);
-        if (generatedResponse.error) await message.reply(generatedResponse.error);
       }
     }
   }
@@ -603,7 +612,8 @@ client.on('interactionCreate', async (interaction) => {
       await interaction.deferReply();
       const tts = interaction.options.getBoolean('tts') || false;
       const debug = interaction.options.getBoolean('debug') || false;
-      const generatedResponse = await generateResponse(interaction, debug, tts);
+      const startSeed = interaction.options.getString('seed')?.trim() || undefined;
+      const generatedResponse = await generateResponse(interaction, { tts, debug, startSeed });
       if (generatedResponse.message) await interaction.editReply(generatedResponse.message);
       else await interaction.deleteReply();
       if (generatedResponse.debug) await interaction.followUp(generatedResponse.debug);

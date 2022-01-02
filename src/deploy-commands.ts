@@ -25,6 +25,14 @@ export const messageCommand = new SlashCommandBuilder()
       .setName('debug')
       .setDescription('Follow up the generated message with the detailed sources that inspired it.')
       .setRequired(false)
+  )
+  .addStringOption((seed) =>
+    seed
+      .setName('seed')
+      .setDescription(
+        `A ${config.stateSize}-word phrase to attempt to start a generated sentence with.`
+      )
+      .setRequired(false)
   );
 
 /**

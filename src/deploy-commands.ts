@@ -43,7 +43,7 @@ const channelOptionsGenerator = (builder: SlashCommandChannelOption, index: numb
     .setName(`channel-${index + 1}`)
     .setDescription('A text channel')
     .setRequired(index === 0)
-    .addChannelType(ChannelType.GuildText as any);
+    .addChannelType(ChannelType.GuildText);
 
 export const listenChannelCommand = new SlashCommandBuilder()
   .setName('listen')

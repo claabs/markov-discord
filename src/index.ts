@@ -12,13 +12,11 @@ import Markov, {
 import { createConnection } from 'typeorm';
 import { MarkovInputData } from 'markov-strings-db/dist/src/entity/MarkovInputData';
 import type { PackageJsonPerson } from 'types-package-json';
-import {
-  APISelectMenuComponent,
-  APIInteractionGuildMember,
-} from 'discord.js/node_modules/discord-api-types';
+
 import makeEta from 'simple-eta';
 import formatDistanceToNow from 'date-fns/formatDistanceToNow';
 import addSeconds from 'date-fns/addSeconds';
+import type { APIInteractionGuildMember, APISelectMenuComponent } from 'discord-api-types';
 import L from './logger';
 import { Channel } from './entity/Channel';
 import { Guild } from './entity/Guild';
@@ -632,6 +630,11 @@ client.on('interactionCreate', async (interaction) => {
           await interaction.followUp({ content: INVALID_PERMISSIONS_MESSAGE, ephemeral: true });
           return;
         }
+        if (!interaction.guildId) {
+          await interaction.deleteReply();
+          await interaction.followUp({ content: INVALID_GUILD_MESSAGE, ephemeral: true });
+          return;
+        }
         const channels = getChannelsFromInteraction(interaction);
         await addValidChannels(channels, interaction.guildId);
         await interaction.editReply(
@@ -641,6 +644,11 @@ client.on('interactionCreate', async (interaction) => {
         if (!isModerator(interaction.member)) {
           await interaction.deleteReply();
           await interaction.followUp({ content: INVALID_PERMISSIONS_MESSAGE, ephemeral: true });
+          return;
+        }
+        if (!interaction.guildId) {
+          await interaction.deleteReply();
+          await interaction.followUp({ content: INVALID_GUILD_MESSAGE, ephemeral: true });
           return;
         }
         const channels = getChannelsFromInteraction(interaction);

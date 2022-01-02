@@ -435,21 +435,24 @@ function helpMessage(): Discord.MessageOptions {
   const embed = new Discord.MessageEmbed()
     .setAuthor(client.user.username || packageJson().name, avatarURL)
     .setThumbnail(avatarURL as string)
-    .setDescription('A Markov chain chatbot that speaks based on previous chat input.')
+    .setDescription(
+      `A Markov chain chatbot that speaks based on learned messages from previous chat input.`
+    )
     .addField(
       `${config.messageCommandPrefix} or /${messageCommand.name}`,
-      'Generates a sentence to say based on the chat database. Send your ' +
-        'message as TTS to recieve it as TTS.'
+      `Generates a sentence to say based on the chat database. Send your message as TTS to recieve it as TTS.`
+    )
+    .addField(
+      `/${listenChannelCommand.name}`,
+      `Add, remove, list, or modify the list of channels the bot listens to.`
     )
     .addField(
       `${config.messageCommandPrefix} train or /${trainCommand.name}`,
-      'Fetches the maximum amount of previous messages in the current ' +
-        'text channel, adds it to the database, and regenerates the corpus. Takes some time.'
+      `Fetches the maximum amount of previous messages in the listened to text channels. This takes some time.`
     )
     .addField(
       `${config.messageCommandPrefix} invite or /${inviteCommand.name}`,
-      "Don't invite this bot to other servers. The database is shared " +
-        'between all servers and text channels.'
+      `Post this bot's invite URL.`
     )
     .addField(
       `${config.messageCommandPrefix} debug or /${messageCommand.name} debug: True`,
@@ -670,7 +673,7 @@ client.on('interactionCreate', async (interaction) => {
     } else if (interaction.commandName === trainCommand.name) {
       await interaction.deferReply();
       const responseMessage = await saveGuildMessageHistory(interaction);
-      await interaction.editReply(responseMessage);
+      await interaction.editReply({ content: responseMessage });
     }
   } else if (interaction.isSelectMenu()) {
     if (interaction.customId === 'listen-modify-select') {

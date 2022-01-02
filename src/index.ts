@@ -492,6 +492,11 @@ client.on('ready', async (readyClient) => {
   await deployCommands(readyClient.user.id);
 
   const guildsToSave = readyClient.guilds.valueOf().map((guild) => Guild.create({ id: guild.id }));
+
+  // Remove the duplicate commands
+  if (!config.devGuildId) {
+    await Promise.all(readyClient.guilds.valueOf().map(async (guild) => guild.commands.set([])));
+  }
   await Guild.upsert(guildsToSave, ['id']);
 });
 

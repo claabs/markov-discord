@@ -78,6 +78,11 @@ async function getMarkovByGuildId(guildId: string): Promise<Markov> {
   return markov;
 }
 
+async function isValidChannel(channelId: string): Promise<boolean> {
+  const channel = await Channel.findOne(channelId);
+  return channel?.listen || false;
+}
+
 async function getValidChannels(guild: Discord.Guild): Promise<Discord.TextChannel[]> {
   L.trace('Getting valid channels from database');
   const dbChannels = await Channel.find({ guild: Guild.create({ id: guild.id }), listen: true });
@@ -217,7 +222,6 @@ async function saveGuildMessageHistory(
 
   L.debug('Deleting old data');
   await markov.delete();
-  await markov.setup(); // TODO: temp fix until new markov-strings-db version
 
   const channelIds = channels.map((c) => c.id);
   L.debug({ channelIds }, `Training from text channels`);
@@ -524,18 +528,21 @@ client.on('messageCreate', async (message) => {
     await message.reply(response);
   }
   if (command === 'respond') {
+    L.debug('Responding to legacy command');
     const generatedResponse = await generateResponse(message);
     if (generatedResponse.message) await message.reply(generatedResponse.message);
     if (generatedResponse.debug) await message.reply(generatedResponse.debug);
     if (generatedResponse.error) await message.reply(generatedResponse.error);
   }
   if (command === 'tts') {
+    L.debug('Responding to legacy command tts');
     const generatedResponse = await generateResponse(message, false, true);
     if (generatedResponse.message) await message.reply(generatedResponse.message);
     if (generatedResponse.debug) await message.reply(generatedResponse.debug);
     if (generatedResponse.error) await message.reply(generatedResponse.error);
   }
   if (command === 'debug') {
+    L.debug('Responding to legacy command debug');
     const generatedResponse = await generateResponse(message, true);
     if (generatedResponse.message) await message.reply(generatedResponse.message);
     if (generatedResponse.debug) await message.reply(generatedResponse.debug);
@@ -543,11 +550,14 @@ client.on('messageCreate', async (message) => {
   }
   if (command === null) {
     if (!message.author.bot) {
-      L.debug('Listening...');
-      const markov = await getMarkovByGuildId(message.channel.guildId);
-      await markov.addData([messageToData(message)]);
+      if (await isValidChannel(message.channelId)) {
+        L.debug('Listening');
+        const markov = await getMarkovByGuildId(message.channel.guildId);
+        await markov.addData([messageToData(message)]);
+      }
 
       if (client.user && message.mentions.has(client.user)) {
+        L.debug('Responding to mention');
         const generatedResponse = await generateResponse(message);
         if (generatedResponse.message) await message.reply(generatedResponse.message);
         if (generatedResponse.debug) await message.reply(generatedResponse.debug);
@@ -559,20 +569,20 @@ client.on('messageCreate', async (message) => {
 
 client.on('messageDelete', async (message) => {
   if (message.author?.bot) return;
+  if (!(await isValidChannel(message.channelId))) return;
+  if (!(message.guildId && message.content)) return;
+
   L.debug(`Deleting message ${message.id}`);
-  if (!(message.guildId && message.content)) {
-    return;
-  }
   const markov = await getMarkovByGuildId(message.guildId);
   await markov.removeStrings([message.content]);
 });
 
 client.on('messageUpdate', async (oldMessage, newMessage) => {
   if (oldMessage.author?.bot) return;
+  if (!(await isValidChannel(oldMessage.channelId))) return;
+  if (!(oldMessage.guildId && oldMessage.content && newMessage.content)) return;
+
   L.debug(`Editing message ${oldMessage.id}`);
-  if (!(oldMessage.guildId && oldMessage.content && newMessage.content)) {
-    return;
-  }
   const markov = await getMarkovByGuildId(oldMessage.guildId);
   await markov.removeStrings([oldMessage.content]);
   await markov.addData([newMessage.content]);

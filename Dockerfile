@@ -31,6 +31,8 @@ RUN npm run build
 ########
 FROM base as deploy
 
+USER node
+
 # Steal node_modules from base image
 COPY --from=build /usr/app/node_modules node_modules
 

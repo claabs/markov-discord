@@ -189,9 +189,13 @@ function messageToData(message: Discord.Message): AddDataProps {
   const attachmentUrls = message.attachments.map((a) => a.url);
   let custom: MarkovDataCustom | undefined;
   if (attachmentUrls.length) custom = { attachments: attachmentUrls };
+  const tags: string[] = [message.id];
+  if (message.channelId) tags.push(message.channelId);
+  if (message.guildId) tags.push(message.guildId);
   return {
     string: message.content,
     custom,
+    tags,
   };
 }
 
@@ -213,6 +217,7 @@ async function saveGuildMessageHistory(
 
   L.debug('Deleting old data');
   await markov.delete();
+  await markov.setup(); // TODO: temp fix until new markov-strings-db version
 
   const channelIds = channels.map((c) => c.id);
   L.debug({ channelIds }, `Training from text channels`);
@@ -365,7 +370,7 @@ async function generateResponse(
     const messageOpts: Discord.MessageOptions = { tts };
     const attachmentUrls = response.refs
       .filter((ref) => ref.custom && 'attachments' in ref.custom)
-      .flatMap((ref) => ref.custom.attachments);
+      .flatMap((ref) => (ref.custom as MarkovDataCustom).attachments);
     if (attachmentUrls.length > 0) {
       const randomRefAttachment = getRandomElement(attachmentUrls);
       messageOpts.files = [randomRefAttachment];
@@ -373,19 +378,8 @@ async function generateResponse(
       const randomMessage = await MarkovInputData.createQueryBuilder<
         MarkovInputData<MarkovDataCustom>
       >('input')
-        .leftJoinAndSelect('input.fragment', 'fragment')
-        .leftJoinAndSelect('fragment.corpusEntry', 'corpusEntry')
-        .where([
-          {
-            fragment: { startWordMarkov: markov.db },
-          },
-          {
-            fragment: { endWordMarkov: markov.db },
-          },
-          {
-            fragment: { corpusEntry: { markov: markov.db } },
-          },
-        ])
+        .leftJoinAndSelect('input.markov', 'markov')
+        .where({ markov: markov.db })
         .orderBy('RANDOM()')
         .limit(1)
         .getOne();
@@ -565,7 +559,7 @@ client.on('messageDelete', async (message) => {
     return;
   }
   const markov = await getMarkovByGuildId(message.guildId);
-  await markov.removeData([message.content]);
+  await markov.removeStrings([message.content]);
 });
 
 client.on('messageUpdate', async (oldMessage, newMessage) => {
@@ -575,7 +569,7 @@ client.on('messageUpdate', async (oldMessage, newMessage) => {
     return;
   }
   const markov = await getMarkovByGuildId(oldMessage.guildId);
-  await markov.removeData([oldMessage.content]);
+  await markov.removeStrings([oldMessage.content]);
   await markov.addData([newMessage.content]);
 });
 

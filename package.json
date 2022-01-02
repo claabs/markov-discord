@@ -44,7 +44,7 @@
     "erlpack": "github:discord/erlpack",
     "fs-extra": "^10.0.0",
     "json5": "^2.2.0",
-    "markov-strings-db": "^4.1.2",
+    "markov-strings-db": "^4.1.3",
     "pino": "^7.5.1",
     "pino-pretty": "^7.3.0",
     "reflect-metadata": "^0.1.13",

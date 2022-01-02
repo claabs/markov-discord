@@ -5,6 +5,8 @@ FROM node:16-alpine3.14 as base
 
 WORKDIR /usr/app
 
+RUN apk add --no-cache tini
+
 ########
 # BUILD
 ########
@@ -49,4 +51,5 @@ ARG COMMIT_SHA=""
 ENV NODE_ENV=production \
     COMMIT_SHA=${COMMIT_SHA}
 
+ENTRYPOINT ["/sbin/tini", "--"]
 CMD [ "node", "/usr/app/dist/index.js" ]

@@ -23,6 +23,7 @@ All notable changes to this project will be documented in this file.
 * Discord slash command support
 * Many more config options available at <https://claabs.github.io/markov-discord/classes/AppConfig.html>
 * Config file supports [JSON5](https://json5.org/) (comments, trailing commas, etc)
+* Generated responses will now never ping a user or role, only just highlight their name
 
 ### 0.7.3
 

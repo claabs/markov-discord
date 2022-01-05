@@ -1,18 +1,14 @@
-/* eslint-disable no-console */
 import 'source-map-support/register';
 import 'reflect-metadata';
 import * as Discord from 'discord.js';
-
 import Markov, {
   MarkovGenerateOptions,
   MarkovConstructorOptions,
   AddDataProps,
 } from 'markov-strings-db';
-
 import { createConnection } from 'typeorm';
 import { MarkovInputData } from 'markov-strings-db/dist/src/entity/MarkovInputData';
 import type { PackageJsonPerson } from 'types-package-json';
-
 import makeEta from 'simple-eta';
 import formatDistanceToNow from 'date-fns/formatDistanceToNow';
 import addSeconds from 'date-fns/addSeconds';
@@ -376,7 +372,10 @@ async function generateResponse(
     const response = await markov.generate<MarkovDataCustom>(markovGenerateOptions);
     L.info({ string: response.string }, 'Generated response text');
     L.debug({ response }, 'Generated response object');
-    const messageOpts: Discord.MessageOptions = { tts };
+    const messageOpts: Discord.MessageOptions = {
+      tts,
+      allowedMentions: { repliedUser: false, parse: [] },
+    };
     const attachmentUrls = response.refs
       .filter((ref) => ref.custom && 'attachments' in ref.custom)
       .flatMap((ref) => (ref.custom as MarkovDataCustom).attachments);
@@ -397,20 +396,26 @@ async function generateResponse(
         messageOpts.files = [{ attachment: getRandomElement(randomMessageAttachmentUrls) }];
       }
     }
-
-    response.string = response.string.replace(/@everyone/g, '@everyοne'); // Replace @everyone with a homoglyph 'o'
     messageOpts.content = response.string;
 
     const responseMessages: GenerateResponse = {
       message: messageOpts,
     };
     if (debug) {
-      responseMessages.debug = { content: `\`\`\`\n${JSON.stringify(response, null, 2)}\n\`\`\`` };
+      responseMessages.debug = {
+        content: `\`\`\`\n${JSON.stringify(response, null, 2)}\n\`\`\``,
+        allowedMentions: { repliedUser: false, parse: [] },
+      };
     }
     return responseMessages;
   } catch (err) {
     L.error(err);
-    return { error: { content: `\n\`\`\`\nERROR: ${err}\n\`\`\`` } };
+    return {
+      error: {
+        content: `\n\`\`\`\nERROR: ${err}\n\`\`\``,
+        allowedMentions: { repliedUser: false, parse: [] },
+      },
+    };
   }
 }
 
@@ -498,6 +503,31 @@ function inviteMessage(): Discord.MessageOptions {
   return { embeds: [embed] };
 }
 
+async function handleResponseMessage(
+  generatedResponse: GenerateResponse,
+  message: Discord.Message
+): Promise<void> {
+  if (generatedResponse.message) await message.reply(generatedResponse.message);
+  if (generatedResponse.debug) await message.reply(generatedResponse.debug);
+  if (generatedResponse.error) await message.reply(generatedResponse.error);
+}
+
+async function handleUnprivileged(
+  interaction: Discord.CommandInteraction | Discord.SelectMenuInteraction,
+  deleteReply = true
+): Promise<void> {
+  if (deleteReply) await interaction.deleteReply();
+  await interaction.followUp({ content: INVALID_PERMISSIONS_MESSAGE, ephemeral: true });
+}
+
+async function handleNoGuild(
+  interaction: Discord.CommandInteraction | Discord.SelectMenuInteraction,
+  deleteReply = true
+): Promise<void> {
+  if (deleteReply) await interaction.deleteReply();
+  await interaction.followUp({ content: INVALID_GUILD_MESSAGE, ephemeral: true });
+}
+
 client.on('ready', async (readyClient) => {
   L.info({ inviteUrl: generateInviteUrl() }, 'Bot logged in');
 
@@ -538,23 +568,17 @@ client.on('messageCreate', async (message) => {
   if (command === 'respond') {
     L.debug('Responding to legacy command');
     const generatedResponse = await generateResponse(message);
-    if (generatedResponse.message) await message.reply(generatedResponse.message);
-    if (generatedResponse.debug) await message.reply(generatedResponse.debug);
-    if (generatedResponse.error) await message.reply(generatedResponse.error);
+    await handleResponseMessage(generatedResponse, message);
   }
   if (command === 'tts') {
     L.debug('Responding to legacy command tts');
     const generatedResponse = await generateResponse(message, { tts: true });
-    if (generatedResponse.message) await message.reply(generatedResponse.message);
-    if (generatedResponse.debug) await message.reply(generatedResponse.debug);
-    if (generatedResponse.error) await message.reply(generatedResponse.error);
+    await handleResponseMessage(generatedResponse, message);
   }
   if (command === 'debug') {
     L.debug('Responding to legacy command debug');
     const generatedResponse = await generateResponse(message, { debug: true });
-    if (generatedResponse.message) await message.reply(generatedResponse.message);
-    if (generatedResponse.debug) await message.reply(generatedResponse.debug);
-    if (generatedResponse.error) await message.reply(generatedResponse.error);
+    await handleResponseMessage(generatedResponse, message);
   }
   if (command === null) {
     if (!message.author.bot) {
@@ -563,9 +587,7 @@ client.on('messageCreate', async (message) => {
         // <@!278354154563567636> how are you doing?
         const startSeed = message.content.replace(/<@!\d+>/g, '').trim();
         const generatedResponse = await generateResponse(message, { startSeed });
-        if (generatedResponse.message) await message.reply(generatedResponse.message);
-        if (generatedResponse.debug) await message.reply(generatedResponse.debug);
-        if (generatedResponse.error) await message.reply(generatedResponse.error);
+        await handleResponseMessage(generatedResponse, message);
       }
 
       if (await isValidChannel(message.channelId)) {
@@ -598,6 +620,7 @@ client.on('messageUpdate', async (oldMessage, newMessage) => {
   await markov.addData([newMessage.content]);
 });
 
+// eslint-disable-next-line consistent-return
 client.on('interactionCreate', async (interaction) => {
   if (interaction.isCommand()) {
     L.info({ command: interaction.commandName }, 'Recieved slash command');
@@ -626,14 +649,10 @@ client.on('interactionCreate', async (interaction) => {
         await interaction.editReply(reply);
       } else if (subCommand === 'add') {
         if (!isModerator(interaction.member)) {
-          await interaction.deleteReply();
-          await interaction.followUp({ content: INVALID_PERMISSIONS_MESSAGE, ephemeral: true });
-          return;
+          return handleUnprivileged(interaction);
         }
         if (!interaction.guildId) {
-          await interaction.deleteReply();
-          await interaction.followUp({ content: INVALID_GUILD_MESSAGE, ephemeral: true });
-          return;
+          return handleNoGuild(interaction);
         }
         const channels = getChannelsFromInteraction(interaction);
         await addValidChannels(channels, interaction.guildId);
@@ -642,14 +661,10 @@ client.on('interactionCreate', async (interaction) => {
         );
       } else if (subCommand === 'remove') {
         if (!isModerator(interaction.member)) {
-          await interaction.deleteReply();
-          await interaction.followUp({ content: INVALID_PERMISSIONS_MESSAGE, ephemeral: true });
-          return;
+          return handleUnprivileged(interaction);
         }
         if (!interaction.guildId) {
-          await interaction.deleteReply();
-          await interaction.followUp({ content: INVALID_GUILD_MESSAGE, ephemeral: true });
-          return;
+          return handleNoGuild(interaction);
         }
         const channels = getChannelsFromInteraction(interaction);
         await removeValidChannels(channels, interaction.guildId);
@@ -657,15 +672,13 @@ client.on('interactionCreate', async (interaction) => {
           `Removed ${channels.length} text channels from the list. Use \`/train\` to remove these channels from the past known messages.`
         );
       } else if (subCommand === 'modify') {
-        await interaction.deleteReply();
         if (!interaction.guild) {
-          await interaction.followUp({ content: INVALID_GUILD_MESSAGE, ephemeral: true });
-          return;
+          return handleNoGuild(interaction);
         }
         if (!isModerator(interaction.member)) {
-          await interaction.followUp({ content: INVALID_PERMISSIONS_MESSAGE, ephemeral: true });
-          return;
+          await handleUnprivileged(interaction);
         }
+        await interaction.deleteReply();
         const dbTextChannels = await getTextChannels(interaction.guild);
         const row = new Discord.MessageActionRow().addComponents(
           new Discord.MessageSelectMenu()
@@ -698,13 +711,10 @@ client.on('interactionCreate', async (interaction) => {
       await interaction.deferUpdate();
       const { guild } = interaction;
       if (!isModerator(interaction.member)) {
-        await interaction.followUp({ content: INVALID_PERMISSIONS_MESSAGE, ephemeral: true });
-        return;
+        return handleUnprivileged(interaction, false);
       }
       if (!guild) {
-        await interaction.deleteReply();
-        await interaction.followUp({ content: INVALID_GUILD_MESSAGE, ephemeral: true });
-        return;
+        return handleNoGuild(interaction, false);
       }
 
       const allChannels =

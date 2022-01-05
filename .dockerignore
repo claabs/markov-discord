@@ -1,3 +1,5 @@
 config
 dist
 node_modules
+img
+docs

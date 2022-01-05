@@ -1,7 +1,15 @@
 /* eslint-disable @typescript-eslint/no-empty-function, no-useless-constructor, max-classes-per-file */
 import 'reflect-metadata';
 import { Type } from 'class-transformer';
-import { IsString, IsOptional, IsEnum, IsArray, IsInt, IsDefined } from 'class-validator';
+import {
+  IsString,
+  IsOptional,
+  IsEnum,
+  IsArray,
+  IsInt,
+  IsDefined,
+  IsNotEmpty,
+} from 'class-validator';
 
 export enum LogLevel {
   SILENT = 'silent',
@@ -31,7 +39,8 @@ export class AppConfig {
    */
   @IsDefined()
   @IsString()
-  token = process.env.TOKEN as string;
+  @IsNotEmpty()
+  token = process.env.TOKEN || '';
 
   /**
    * The command prefix used to trigger the bot commands (when not using slash commands)
@@ -65,7 +74,7 @@ export class AppConfig {
 
   /**
    * A list of Discord user IDs that have owner permissions for the bot
-   * @example ['82684276755136512']
+   * @example ["82684276755136512"]
    * @default []
    * @env OWNER_IDS (comma separated)
    */

@@ -257,9 +257,10 @@ async function saveGuildMessageHistory(
 
   const messageContent = `Parsing past messages from ${channels.length} channel(s).`;
 
+  const NO_COMPLETED_CHANNELS_TEXT = 'None';
   const completedChannelsField: Discord.EmbedFieldData = {
     name: 'Completed Channels',
-    value: 'None',
+    value: NO_COMPLETED_CHANNELS_TEXT,
     inline: true,
   };
   const currentChannelField: Discord.EmbedFieldData = {
@@ -376,10 +377,14 @@ async function saveGuildMessageHistory(
       const lastMessage = channelBatchMessages.last();
 
       // Update tracking metrics
-      if (!lastMessage || channelBatchMessages.size < PAGE_SIZE) {
+      if (!lastMessage?.id || channelBatchMessages.size < PAGE_SIZE) {
         keepGoing = false;
-        if (completedChannelsField.value === 'None') completedChannelsField.value = '';
-        completedChannelsField.value += `\n • <#${channel.id}>`;
+        const channelIdListItem = ` • <#${channel.id}>`;
+        if (completedChannelsField.value === NO_COMPLETED_CHANNELS_TEXT)
+          completedChannelsField.value = channelIdListItem;
+        else {
+          completedChannelsField.value += `\n${channelIdListItem}`;
+        }
       } else {
         oldestMessageID = lastMessage.id;
       }
@@ -806,7 +811,7 @@ client.on('interactionCreate', async (interaction) => {
     } else if (interaction.commandName === trainCommand.name) {
       await interaction.deferReply();
       const responseMessage = await saveGuildMessageHistory(interaction);
-      await interaction.editReply({ content: responseMessage, embeds: [] });
+      await interaction.followUp({ content: responseMessage });
     }
   } else if (interaction.isSelectMenu()) {
     if (interaction.customId === 'listen-modify-select') {

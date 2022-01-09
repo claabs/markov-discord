@@ -51,7 +51,7 @@ Running this bot in Docker is the easiest way to ensure it runs as expected and 
 
     ```sh
     # NPM install non-development packages
-    npm ci --only=production
+    npm ci
     # Build the Typescript
     npm run build
     # Initialize the config

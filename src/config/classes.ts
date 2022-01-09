@@ -85,6 +85,21 @@ export class AppConfig {
   ownerIds = process.env.OWNER_IDS ? process.env.OWNER_IDS.split(',').map((id) => id.trim()) : [];
 
   /**
+   * If provided, the standard "generate response" command will only work for a user in this list of role IDs.
+   * Moderators and owners configured in `ownerIds` do not bypass this check, so make sure to add them to a valid role as well.
+   * @example ["734548250895319070"]
+   * @default []
+   * @env USER_ROLE_IDS (comma separated)
+   */
+  @IsArray()
+  @IsString({ each: true })
+  @Type(() => String)
+  @IsOptional()
+  userRoleIds = process.env.USER_ROLE_IDS
+    ? process.env.USER_ROLE_IDS.split(',').map((id) => id.trim())
+    : [];
+
+  /**
    * TZ name from this list: https://en.wikipedia.org/wiki/List_of_tz_database_time_zones#List
    * @example America/Chicago
    * @default UTC

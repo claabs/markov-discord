@@ -130,7 +130,7 @@ async function removeValidChannels(
 }
 
 /**
- * Checks if the author of a message as moderator-like permissions.
+ * Checks if the author of a command has moderator-like permissions.
  * @param {GuildMember} member Sender of the message
  * @return {Boolean} True if the sender is a moderator.
  *
@@ -148,6 +148,23 @@ function isModerator(member: Discord.GuildMember | APIInteractionGuildMember | n
       MODERATOR_PERMISSIONS.some((p) => member.permissions.has(p)) ||
       config.ownerIds.includes(member.id)
     );
+  }
+  // TODO: How to parse API permissions?
+  L.debug({ permissions: member.permissions });
+  return true;
+}
+
+/**
+ * Checks if the author of a command has a role in the `userRoleIds` config option (if present).
+ * @param {GuildMember} member Sender of the message
+ * @return {Boolean} True if the sender is a moderator.
+ *
+ */
+function isAllowedUser(member: Discord.GuildMember | APIInteractionGuildMember | null): boolean {
+  if (!config.userRoleIds.length) return true;
+  if (!member) return false;
+  if (member instanceof Discord.GuildMember) {
+    return config.userRoleIds.some((p) => member.roles.cache.has(p));
   }
   // TODO: How to parse API permissions?
   L.debug({ permissions: member.permissions });
@@ -359,11 +376,15 @@ async function generateResponse(
   const { tts = false, debug = false, startSeed } = options || {};
   if (!interaction.guildId) {
     L.warn('Received an interaction without a guildId');
-    return { message: { content: INVALID_GUILD_MESSAGE } };
+    return { error: { content: INVALID_GUILD_MESSAGE } };
   }
   if (!interaction.channelId) {
     L.warn('Received an interaction without a channelId');
-    return { message: { content: 'This action must be performed within a text channel.' } };
+    return { error: { content: 'This action must be performed within a text channel.' } };
+  }
+  if (!isAllowedUser(interaction.member)) {
+    L.info('Member does not have permissions to generate a response');
+    return { error: { content: INVALID_PERMISSIONS_MESSAGE } };
   }
   const markov = await getMarkovByGuildId(interaction.guildId);
 

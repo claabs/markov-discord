@@ -30,10 +30,10 @@ Running this bot in Docker is the easiest way to ensure it runs as expected and 
 1. Open a command prompt and run:
 
     ```sh
-    docker run --rm -ti -v /my/host/dir:/usr/app/config ghcr.io/claabs/markov-discord:latest
+    docker run --restart unless-stopped --rm -ti -v /my/host/dir:/usr/app/config ghcr.io/claabs/markov-discord:latest
     ```
 
-    Where `/my/host/dir` is a accessible path on your system.
+    Where `/my/host/dir` is a accessible path on your system. `--restart=unless-stopped` is recommended in case an unexpected error crashes the bot.
 1. The Docker container will create a default config file in your mounted volume (`/my/host/dir`). Open it and add your bot token. You may change any other values to your liking as well. Details for each configuration item can be found here: <https://claabs.github.io/markov-discord/classes/AppConfig.html>
 1. Run the container again and use the invite link printed to the logs.
 

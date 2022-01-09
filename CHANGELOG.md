@@ -12,9 +12,10 @@ All notable changes to this project will be documented in this file.
 * Config option `game` renamed to `activity`
 * Config option `role` renamed to `userRoleIds`. Changed from string to array of strings.
 * Docker internal volume path moved from `/usr/src/markbot/config` to `/usr/app/config`
-* Database changed from JSON files to a SQLite database. You'll need to retrain the bot to use it again.
+* Database changed from JSON files to a SQLite database. You'll need to re-train the bot to use it again.
 * The bot must be explicitly granted permission to listen to a list of channels before using it. Configure it with `/listen`.
 * Docker user changed from `root` to `node`. You may need to update your mounted volume's permissions.
+* pm2 has been removed from the Docker container. Make sure to add `--restart=unless-stopped` to your Docker run config to ensure the same resiliency.
 
 #### New Features
 

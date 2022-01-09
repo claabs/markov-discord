@@ -21,6 +21,7 @@ export enum LogLevel {
 }
 
 /**
+ * The config file supports [JSON5](https://json5.org/) syntax. It supports both `.json` and `.json5` extensions if you prefer one over the other.
  * @example ```jsonc
  * {
  *   "token": "k5NzE2NDg1MTIwMjc0ODQ0Nj.DSnXwg.ttNotARealToken5p3WfDoUxhiH",

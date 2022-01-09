@@ -67,4 +67,4 @@ config.json
 error.json
 markovDB.json
 
-config
+/config/

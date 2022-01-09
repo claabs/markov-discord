@@ -26,7 +26,7 @@ All notable changes to this project will be documented in this file.
   * Owner IDs
   * Log level
   * Slash command name
-* Config file supports [JSON5](https://json5.org/) (comments, trailing commas, etc)
+* Config file supports [JSON5](https://json5.org/) (comments, trailing commas, etc). It also may use the `.json5` file extension if you prefer.
 * Generated responses will now never ping a user or role, only just highlight their name
 
 ### 0.7.3

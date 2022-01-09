@@ -13,7 +13,7 @@ All notable changes to this project will be documented in this file.
 * Docker internal volume path moved from `/usr/src/markbot/config` to `/usr/app/config`
 * Database changed from JSON files to a SQLite database. You'll need to retrain the bot to use it again.
 * The bot must be explicitly granted permission to listen to a list of channels before using it. Configure it with `/listen`.
-* Docker user changed from `root` to `node`
+* Docker user changed from `root` to `node`. You may need to update your mounted volume's permissions.
 
 #### New Features
 
@@ -21,7 +21,10 @@ All notable changes to this project will be documented in this file.
 * The bot can be restricted to only learn/listen from a strict list of channels
 * Bot responses can be seeded by a short phrase
 * Discord slash command support
-* Many more config options available at <https://claabs.github.io/markov-discord/classes/AppConfig.html>
+* Many new config options available at <https://claabs.github.io/markov-discord/classes/AppConfig.html>
+  * Owner IDs
+  * Log level
+  * Slash command name
 * Config file supports [JSON5](https://json5.org/) (comments, trailing commas, etc)
 * Generated responses will now never ping a user or role, only just highlight their name
 

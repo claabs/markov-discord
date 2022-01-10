@@ -314,8 +314,10 @@ async function saveGuildMessageHistory(
           limit: PAGE_SIZE,
         });
       } catch (err) {
-        L.error(`Error retreiving messages before ${oldestMessageID}`);
         L.error(err);
+        L.error(
+          `Error retreiving messages before ${oldestMessageID} in channel ${channel.name}. This is probably a permissions issue.`
+        );
         break; // Give up on this channel
       }
 
@@ -341,8 +343,10 @@ async function saveGuildMessageHistory(
                 limit: PAGE_SIZE,
               });
             } catch (err) {
-              L.error(`Error retreiving thread messages before ${oldestThreadMessageID}`);
               L.error(err);
+              L.error(
+                `Error retreiving thread messages before ${oldestThreadMessageID} in thread ${threadChannel.name}. This is probably a permissions issue.`
+              );
               break; // Give up on this thread
             }
             L.trace(
@@ -351,7 +355,7 @@ async function saveGuildMessageHistory(
             );
             const lastThreadMessage = threadBatchMessages.last();
             allBatchMessages = allBatchMessages.concat(threadBatchMessages); // Add the thread messages to this message batch to be included in later processing
-            if (!lastThreadMessage || threadBatchMessages.size < PAGE_SIZE) {
+            if (!lastThreadMessage?.id || threadBatchMessages.size < PAGE_SIZE) {
               keepGoingThread = false;
             } else {
               oldestThreadMessageID = lastThreadMessage.id;

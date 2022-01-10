@@ -314,7 +314,7 @@ async function saveGuildMessageHistory(
           limit: PAGE_SIZE,
         });
       } catch (err) {
-        L.error({ before: oldestMessageID, limit: PAGE_SIZE }, 'Error retreiving messages');
+        L.error(`Error retreiving messages before ${oldestMessageID}`);
         L.error(err);
         break; // Give up on this channel
       }
@@ -341,10 +341,7 @@ async function saveGuildMessageHistory(
                 limit: PAGE_SIZE,
               });
             } catch (err) {
-              L.error(
-                { before: oldestThreadMessageID, limit: PAGE_SIZE },
-                'Error retreiving thread messages'
-              );
+              L.error(`Error retreiving thread messages before ${oldestThreadMessageID}`);
               L.error(err);
               break; // Give up on this thread
             }
@@ -810,8 +807,10 @@ client.on('interactionCreate', async (interaction) => {
       }
     } else if (interaction.commandName === trainCommand.name) {
       await interaction.deferReply();
+      const reply = (await interaction.fetchReply()) as Discord.Message; // Must fetch the reply ASAP
       const responseMessage = await saveGuildMessageHistory(interaction);
-      await interaction.followUp({ content: responseMessage });
+      // Send a message in reply to the reply to avoid the 15 minute webhook token timeout
+      await reply.reply({ content: responseMessage });
     }
   } else if (interaction.isSelectMenu()) {
     if (interaction.customId === 'listen-modify-select') {

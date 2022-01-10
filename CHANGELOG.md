@@ -23,6 +23,7 @@ All notable changes to this project will be documented in this file.
 * The bot can be restricted to only learn/listen from a strict list of channels
 * Bot responses can be seeded by a short phrase
 * Discord slash command support
+* Discord thread support
 * Many new config options available at <https://claabs.github.io/markov-discord/classes/AppConfig.html>
   * Owner IDs
   * Log level

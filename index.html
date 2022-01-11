@@ -1,0 +1,79 @@
+<!DOCTYPE html><html class="default"><head><meta charSet="utf-8"/><meta http-equiv="x-ua-compatible" content="IE=edge"/><title>markov-discord</title><meta name="description" content="Documentation for markov-discord"/><meta name="viewport" content="width=device-width, initial-scale=1"/><link rel="stylesheet" href="assets/style.css"/><link rel="stylesheet" href="assets/highlight.css"/><script async src="assets/search.js" id="search-script"></script></head><body><script>document.body.classList.add(localStorage.getItem("tsd-theme") || "os")</script><header><div class="tsd-page-toolbar"><div class="container"><div class="table-wrap"><div class="table-cell" id="tsd-search" data-base="."><div class="field"><label for="tsd-search-field" class="tsd-widget search no-caption">Search</label><input type="text" id="tsd-search-field"/></div><ul class="results"><li class="state loading">Preparing search index...</li><li class="state failure">The search index is not available</li></ul><a href="index.html" class="title">markov-discord</a></div><div class="table-cell" id="tsd-widgets"><div id="tsd-filter"><a href="#" class="tsd-widget options no-caption" data-toggle="options">Options</a><div class="tsd-filter-group"><div class="tsd-select" id="tsd-filter-visibility"><span class="tsd-select-label">All</span><ul class="tsd-select-list"><li data-value="public">Public</li><li data-value="protected">Public/Protected</li><li data-value="private" class="selected">All</li></ul></div> <input type="checkbox" id="tsd-filter-inherited" checked/><label class="tsd-widget" for="tsd-filter-inherited">Inherited</label><input type="checkbox" id="tsd-filter-externals" checked/><label class="tsd-widget" for="tsd-filter-externals">Externals</label></div></div><a href="#" class="tsd-widget menu no-caption" data-toggle="menu">Menu</a></div></div></div></div><div class="tsd-page-title"><div class="container"><h1>markov-discord</h1></div></div></header><div class="container container-main"><div class="row"><div class="col-8 col-content"><div class="tsd-panel tsd-typography">
+<a href="#markbot-for-discord" id="markbot-for-discord" style="color: inherit; text-decoration: none;">
+  <h1>MarkBot for Discord</h1>
+</a>
+<p>A Markov chain bot using markov-strings.</p>
+
+<a href="#usage" id="usage" style="color: inherit; text-decoration: none;">
+  <h2>Usage</h2>
+</a>
+<ol>
+<li>Configure what channels you want the bot to listen/learn from:<ul>
+<li>User: <code>/listen modify</code></li>
+<li>Bot: <img src="img/listen.png" alt="Select which channels your would like the bot to actively listen to"></li>
+</ul>
+</li>
+<li>Train the bot in a lengthy text channel:<ul>
+<li>User: <code>/train</code></li>
+<li>Bot: <img src="img/train.png" alt="Parsing past messages from 5 channel(s)."></li>
+</ul>
+</li>
+<li>Ask the bot to say something:<ul>
+<li>User: <code>/mark</code></li>
+<li>Bot: <img src="img/respond.png" alt="worms are not baby snakes, by the way"></li>
+</ul>
+</li>
+</ol>
+
+<a href="#setup" id="setup" style="color: inherit; text-decoration: none;">
+  <h2>Setup</h2>
+</a>
+<p>This bot stores your Discord server&#39;s entire message history, so a public instance to invite to your server is not available due to obvious data privacy concerns. Instead, you can host it yourself.</p>
+<ol>
+<li>Create a <a href="https://discordapp.com/developers/applications/">Discord bot application</a></li>
+<li>Under the &quot;Bot&quot; section, enable the &quot;Message Content Intent&quot;, and copy the token for later.</li>
+<li>Setup and configure the bot using one of the below methods:</li>
+</ol>
+
+<a href="#docker" id="docker" style="color: inherit; text-decoration: none;">
+  <h3>Docker</h3>
+</a>
+<p>Running this bot in Docker is the easiest way to ensure it runs as expected and can easily recieve updates.</p>
+<ol>
+<li><p><a href="https://docs.docker.com/get-docker/">Install Docker for your OS</a></p>
+</li>
+<li><p>Open a command prompt and run:</p>
+<pre><code class="language-sh"><span class="hl-0">docker run --restart unless-stopped --rm -ti -v /my/host/dir:/usr/app/config ghcr.io/claabs/markov-discord:latest</span>
+</code></pre>
+<p> Where <code>/my/host/dir</code> is a accessible path on your system. <code>--restart=unless-stopped</code> is recommended in case an unexpected error crashes the bot.</p>
+</li>
+<li><p>The Docker container will create a default config file in your mounted volume (<code>/my/host/dir</code>). Open it and add your bot token. You may change any other values to your liking as well. Details for each configuration item can be found here: <a href="https://claabs.github.io/markov-discord/classes/AppConfig.html">https://claabs.github.io/markov-discord/classes/AppConfig.html</a></p>
+</li>
+<li><p>Run the container again and use the invite link printed to the logs.</p>
+</li>
+</ol>
+
+<a href="#windows" id="windows" style="color: inherit; text-decoration: none;">
+  <h3>Windows</h3>
+</a>
+<ol>
+<li><p>Install <a href="https://nodejs.org/en/download/">Node.js 16 or newer</a>.</p>
+</li>
+<li><p>Download this repository using git in a command prompt</p>
+<pre><code class="language-cmd"><span class="hl-0">git clone https://github.</span><span class="hl-1">com</span><span class="hl-0">/</span><span class="hl-1">claabs</span><span class="hl-0">/</span><span class="hl-1">markov</span><span class="hl-0">-discord.git</span>
+</code></pre>
+<p> or by just downloading and extracting the <a href="https://github.com/claabs/markov-discord/archive/master.zip">project zip</a> from GitHub.</p>
+</li>
+<li><p>Open a command prompt in the <code>markov-discord</code> folder.</p>
+<pre><code class="language-sh"><span class="hl-2"># NPM install non-development packages</span><br/><span class="hl-0">npm ci</span><br/><span class="hl-2"># Build the Typescript</span><br/><span class="hl-0">npm run build</span><br/><span class="hl-2"># Initialize the config</span><br/><span class="hl-0">npm start</span>
+</code></pre>
+</li>
+<li><p>The program will create a <code>config/config.json</code> in the project folder. Open it and add your bot token. You may change any other values to your liking as well. Details for each configuration item can be found here: <a href="https://claabs.github.io/markov-discord/classes/AppConfig.html">https://claabs.github.io/markov-discord/classes/AppConfig.html</a></p>
+</li>
+<li><p>Run the bot:</p>
+<pre><code class="language-sh"><span class="hl-0">npm start</span>
+</code></pre>
+<p> And use the invite link printed to the logs.</p>
+</li>
+</ol>
+</div></div><div class="col-4 col-menu menu-sticky-wrap menu-highlight"><nav class="tsd-navigation primary"><ul><li class="current"><a href="modules.html">Exports</a></li></ul></nav><nav class="tsd-navigation secondary menu-sticky"><ul><li class="tsd-kind-enum"><a href="enums/LogLevel.html" class="tsd-kind-icon">Log<wbr/>Level</a></li><li class="tsd-kind-class"><a href="classes/AppConfig.html" class="tsd-kind-icon">App<wbr/>Config</a></li></ul></nav></div></div></div><footer class="with-border-bottom"><div class="container"><h2>Legend</h2><div class="tsd-legend-group"><ul class="tsd-legend"><li class="tsd-kind-constructor tsd-parent-kind-class"><span class="tsd-kind-icon">Constructor</span></li><li class="tsd-kind-property tsd-parent-kind-class"><span class="tsd-kind-icon">Property</span></li></ul></div><h2>Settings</h2><p>Theme <select id="theme"><option value="os">OS</option><option value="light">Light</option><option value="dark">Dark</option></select></p></div></footer><div class="container tsd-generator"><p>Generated using <a href="https://typedoc.org/" target="_blank">TypeDoc</a></p></div><div class="overlay"></div><script src="assets/main.js"></script></body></html>

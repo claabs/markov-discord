@@ -1,49 +1,55 @@
 ########
 # BASE
 ########
-FROM keymetrics/pm2:12-alpine as base
-WORKDIR /usr/src/markbot
+FROM node:16-alpine3.15 as base
 
-COPY package*.json ./
-# Install build tools for erlpack, then install prod deps only, then remove build tools
-RUN apk add --no-cache make gcc g++ python && \
-    npm ci --only=production && \
-    apk del make gcc g++ python
+WORKDIR /usr/app
+
+RUN apk add --no-cache tini
 
 ########
 # BUILD
 ########
 FROM base as build
 
-# Copy all *.json, *.js, *.ts
-COPY . .
-# Prod deps already installed, add dev deps
-RUN npm i
+COPY package*.json ./
+# Install build tools for erlpack, then install prod deps only
+RUN apk add --no-cache make gcc g++ python3 \
+    && npm ci --only=production
+
+# Copy all jsons
+COPY package*.json tsconfig.json ./
+
+# Add dev deps
+RUN npm ci
+
+# Copy source code
+COPY src src
 
 RUN npm run build
 
 ########
 # DEPLOY
 ########
-FROM keymetrics/pm2:12-alpine as deploy
-WORKDIR /usr/src/markbot
+FROM base as deploy
 
-ENV NPM_CONFIG_LOGLEVEL warn
+USER node
 
 # Steal node_modules from base image
-COPY --from=base /usr/src/markbot/node_modules ./node_modules/
+COPY --from=build /usr/app/node_modules node_modules
 
 # Steal compiled code from build image
-COPY --from=build /usr/src/markbot/dist ./
+COPY --from=build /usr/app/dist dist
 
 # Copy package.json for version number
-COPY package*.json ./
+COPY package*.json ormconfig.js ./
 
-# Copy PM2 config
-COPY ecosystem.config.js .
+# RUN mkdir config
 
-RUN mkdir config
+ARG COMMIT_SHA=""
 
-# RUN ls -al
+ENV NODE_ENV=production \
+    COMMIT_SHA=${COMMIT_SHA}
 
-CMD [ "pm2-runtime", "start", "ecosystem.config.js" ]
+ENTRYPOINT ["/sbin/tini", "--"]
+CMD [ "node", "/usr/app/dist/index.js" ]

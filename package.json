@@ -1,16 +1,19 @@
 {
-  "name": "markbot",
-  "version": "0.7.3",
+  "name": "markov-discord",
+  "version": "2.0.0",
   "description": "A conversational Markov chain bot for Discord",
-  "main": "index.js",
+  "main": "dist/index.js",
   "scripts": {
-    "start": "node dist/index.js",
-    "start:ts": "ts-node index.ts",
-    "build": "tsc",
-    "lint": "tsc --noEmit && eslint **/*.ts",
-    "docker-up": "docker run --rm -e TOKEN=abc123 -it $(docker build -q .)"
+    "start": "NODE_ENV=production pm2 start --no-daemon dist/index.js",
+    "start:ts": "ts-node src/index.ts",
+    "build": "rimraf dist && tsc",
+    "lint": "tsc --noEmit && eslint **/*.ts *.js",
+    "docker:build": "docker build . -t charlocharlie/markov-discord:latest --target deploy",
+    "docker:run": "docker run --rm -ti -v $(pwd)/config:/usr/app/config charlocharlie/markov-discord:latest",
+    "typeorm": "node --require ts-node/register ./node_modules/typeorm/cli.js",
+    "docs": "typedoc --out docs src/config/classes.ts"
   },
-  "repository": "https://github.com/charlocharlie/markov-discord.git",
+  "repository": "https://github.com/claabs/markov-discord.git",
   "keywords": [
     "discord",
     "markov",
@@ -22,36 +25,55 @@
     "markov-chain-bot",
     "docker"
   ],
-  "author": "Charlie Laabs <charlielaabs@gmail.com>",
+  "author": {
+    "name": "Charlie Laabs",
+    "url": "https://github.com/claabs"
+  },
   "license": "MIT",
   "dependencies": {
-    "bufferutil": "^4.0.1",
-    "discord.js": "^12.3.1",
-    "erlpack": "^0.1.3",
-    "markov-strings": "^3.0.1",
-    "node-schedule": "^1.3.2",
-    "source-map-support": "^0.5.16",
+    "@discordjs/builders": "^0.11.0",
+    "@discordjs/rest": "^0.2.0-canary.0",
+    "@types/fs-extra": "^9.0.13",
+    "better-sqlite3": "^7.4.6",
+    "bufferutil": "^4.0.6",
+    "class-transformer": "^0.5.1",
+    "class-validator": "^0.13.2",
+    "date-fns": "^2.28.0",
+    "discord-api-types": "^0.26.1",
+    "discord.js": "^13.5.1",
+    "dotenv": "^10.0.0",
+    "erlpack": "github:discord/erlpack",
+    "fs-extra": "^10.0.0",
+    "json5": "^2.2.0",
+    "markov-strings-db": "^4.1.4",
+    "pino": "^7.6.2",
+    "pino-pretty": "^7.3.0",
+    "reflect-metadata": "^0.1.13",
+    "simple-eta": "^3.0.2",
+    "source-map-support": "^0.5.21",
+    "typeorm": "^0.2.41",
+    "utf-8-validate": "^5.0.8",
     "zlib-sync": "^0.1.7"
   },
-  "engines": {
-    "node": ">=12.0.0"
-  },
   "devDependencies": {
-    "@types/node": "^12.12.21",
-    "@types/node-schedule": "^1.3.0",
-    "@types/ws": "^7.2.7",
-    "@typescript-eslint/eslint-plugin": "^2.13.0",
-    "@typescript-eslint/parser": "^2.13.0",
-    "eslint": "^6.8.0",
-    "eslint-config-airbnb-base": "^14.0.0",
-    "eslint-config-prettier": "^6.7.0",
-    "eslint-plugin-import": "^2.19.1",
-    "eslint-plugin-prettier": "^3.1.2",
-    "prettier": "^1.19.1",
-    "ts-node": "^8.5.4",
-    "typescript": "^3.7.4"
+    "@types/node": "^16.11.19",
+    "@types/validator": "^13.7.1",
+    "@typescript-eslint/eslint-plugin": "^5.9.0",
+    "@typescript-eslint/parser": "^5.9.0",
+    "eslint": "^8.6.0",
+    "eslint-config-airbnb-base": "^15.0.0",
+    "eslint-config-prettier": "^8.3.0",
+    "eslint-plugin-import": "^2.25.4",
+    "eslint-plugin-prettier": "^4.0.0",
+    "pm2": "^5.1.2",
+    "prettier": "^2.5.1",
+    "rimraf": "^3.0.2",
+    "ts-node": "^10.4.0",
+    "typedoc": "^0.22.10",
+    "types-package-json": "^2.0.39",
+    "typescript": "^4.5.4"
   },
-  "eslintIgnore": [
-    "**/*.js"
-  ]
+  "engines": {
+    "node": "16"
+  }
 }

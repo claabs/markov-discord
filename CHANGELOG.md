@@ -4,6 +4,10 @@ All notable changes to this project will be documented in this file.
 
 ## Versions
 
+### 2.0.1
+
+* Add a filter to ensure the bot doesn't just post exact previous messages.
+
 ### 2.0.0
 
 #### Breaking Changes

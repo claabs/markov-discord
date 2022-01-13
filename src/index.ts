@@ -60,7 +60,9 @@ const markovOpts: MarkovConstructorOptions = {
 
 const markovGenerateOptions: MarkovGenerateOptions<MarkovDataCustom> = {
   filter: (result): boolean => {
-    return result.score >= config.minScore;
+    return (
+      result.score >= config.minScore && !result.refs.some((ref) => ref.string === result.string)
+    );
   },
   maxTries: config.maxTries,
 };

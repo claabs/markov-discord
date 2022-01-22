@@ -1,8 +1,6 @@
 import pino from 'pino';
-import dotenv from 'dotenv';
+import 'dotenv/config';
 import { config } from './config';
-
-dotenv.config();
 
 const logger = pino({
   transport: {

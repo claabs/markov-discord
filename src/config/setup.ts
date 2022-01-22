@@ -1,5 +1,5 @@
 import 'reflect-metadata';
-import { config as dotenv } from 'dotenv';
+import 'dotenv/config';
 import json5 from 'json5';
 import path from 'path';
 import fs from 'fs-extra';
@@ -7,8 +7,6 @@ import { validateSync } from 'class-validator';
 import { instanceToPlain, plainToInstance } from 'class-transformer';
 import pino from 'pino';
 import { AppConfig } from './classes';
-
-dotenv();
 
 // Declare pino logger as importing would cause dependency cycle
 const L = pino({

@@ -98,10 +98,17 @@ function isHumanAuthoredMessage(message: Discord.Message | Discord.PartialMessag
 async function getValidChannels(guild: Discord.Guild): Promise<Discord.TextChannel[]> {
   L.trace('Getting valid channels from database');
   const dbChannels = await Channel.find({ guild: Guild.create({ id: guild.id }), listen: true });
+  L.trace({ dbChannels: dbChannels.map((c) => c.id) }, 'Valid channels from database');
   const channels = (
     await Promise.all(
       dbChannels.map(async (dbc) => {
-        return guild.channels.fetch(dbc.id.toString());
+        const channelId = dbc.id;
+        try {
+          return guild.channels.fetch(channelId);
+        } catch (err) {
+          L.error({ erroredChannel: dbc, channelId }, 'Error fetching channel');
+          throw err;
+        }
       })
     )
   ).filter((c): c is Discord.TextChannel => c !== null && c instanceof Discord.TextChannel);

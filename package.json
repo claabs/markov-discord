@@ -1,6 +1,6 @@
 {
   "name": "markov-discord",
-  "version": "2.0.1",
+  "version": "2.0.2",
   "description": "A conversational Markov chain bot for Discord",
   "main": "dist/index.js",
   "scripts": {

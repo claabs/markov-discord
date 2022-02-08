@@ -702,6 +702,17 @@ client.on('messageCreate', async (message) => {
         L.debug('Listening');
         const markov = await getMarkovByGuildId(message.channel.guildId);
         await markov.addData([messageToData(message)]);
+
+        //QQ addition (Random Post Generator)
+        let RandomChance = Math.random();
+        L.debug('Random Chance Try');
+        L.debug(RandomChance.toString());
+        if (RandomChance <= 0.02) 
+        {
+          L.debug('Random Chance Pass');
+          const generatedResponse = await generateResponse(message);
+          await handleResponseMessage(generatedResponse, message);
+        }
       }
     }
   }

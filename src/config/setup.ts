@@ -50,12 +50,11 @@ if (!configPath) {
   const newConfigPath = path.resolve(CONFIG_DIR, `${CONFIG_FILE_NAME}.json`);
   config = new AppConfig();
   try {
-    L.debug({ newConfigPath }, 'Creating new config file');
+    L.info({ newConfigPath }, 'Creating new config file');
     fs.writeJSONSync(newConfigPath, instanceToPlain(config), { spaces: 2 });
     L.info({ newConfigPath }, 'Wrote new default config file');
   } catch (err) {
-    L.debug(err);
-    L.info('Not allowed to create new config. Continuing...');
+    L.info(err, 'Not allowed to create new config. Continuing...');
   }
 } else {
   L.debug({ configPath });

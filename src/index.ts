@@ -6,7 +6,7 @@ import Markov, {
   MarkovConstructorOptions,
   AddDataProps,
 } from 'markov-strings-db';
-import { createConnection } from 'typeorm';
+import { DataSource } from 'typeorm';
 import { MarkovInputData } from 'markov-strings-db/dist/src/entity/MarkovInputData';
 import type { PackageJsonPerson } from 'types-package-json';
 import makeEta from 'simple-eta';
@@ -27,6 +27,7 @@ import {
   trainCommand,
 } from './deploy-commands';
 import { getRandomElement, getVersion, packageJson } from './util';
+import ormconfig from './ormconfig';
 
 interface MarkovDataCustom {
   attachments: string[];
@@ -87,7 +88,7 @@ function getGuildChannelId(channel: Discord.TextBasedChannel): string | null {
 async function isValidChannel(channel: Discord.TextBasedChannel): Promise<boolean> {
   const channelId = getGuildChannelId(channel);
   if (!channelId) return false;
-  const dbChannel = await Channel.findOne(channelId);
+  const dbChannel = await Channel.findOneBy({ id: channelId });
   return dbChannel?.listen || false;
 }
 
@@ -97,7 +98,7 @@ function isHumanAuthoredMessage(message: Discord.Message | Discord.PartialMessag
 
 async function getValidChannels(guild: Discord.Guild): Promise<Discord.TextChannel[]> {
   L.trace('Getting valid channels from database');
-  const dbChannels = await Channel.find({ guild: Guild.create({ id: guild.id }), listen: true });
+  const dbChannels = await Channel.findBy({ guild: { id: guild.id }, listen: true });
   L.trace({ dbChannels: dbChannels.map((c) => c.id) }, 'Valid channels from database');
   const channels = (
     await Promise.all(
@@ -864,8 +865,9 @@ client.on('interactionCreate', async (interaction) => {
  * Loads the config settings from disk
  */
 async function main(): Promise<void> {
-  const connection = await Markov.extendConnectionOptions();
-  await createConnection(connection);
+  const dataSourceOptions = Markov.extendDataSourceOptions(ormconfig);
+  const dataSource = new DataSource(dataSourceOptions);
+  await dataSource.initialize();
   await client.login(config.token);
 }
 

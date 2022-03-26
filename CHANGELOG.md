@@ -4,6 +4,11 @@ All notable changes to this project will be documented in this file.
 
 ## Versions
 
+### 2.1.0
+
+* Update dependencies (typeorm 0.3)
+* Dockerfile optimization
+
 ### 2.0.1
 
 * Add a filter to ensure the bot doesn't just post exact previous messages.

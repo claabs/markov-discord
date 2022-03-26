@@ -7,6 +7,17 @@ WORKDIR /usr/app
 
 RUN apk add --no-cache tini
 
+############
+# PROD DEPS
+############
+
+FROM base as prodDeps
+
+COPY package*.json ./
+# Install build tools for erlpack, then install prod deps only
+RUN apk add --no-cache make gcc g++ python3 \
+    && npm ci --only=production
+
 ########
 # BUILD
 ########
@@ -36,13 +47,13 @@ FROM base as deploy
 USER node
 
 # Steal node_modules from base image
-COPY --from=build /usr/app/node_modules node_modules
+COPY --from=prodDeps /usr/app/node_modules node_modules
 
 # Steal compiled code from build image
 COPY --from=build /usr/app/dist dist
 
 # Copy package.json for version number
-COPY package*.json ormconfig.js ./
+COPY package.json ./
 
 # RUN mkdir config
 

@@ -43,6 +43,7 @@ const INVALID_PERMISSIONS_MESSAGE = 'You do not have the permissions for this ac
 const INVALID_GUILD_MESSAGE = 'This action must be performed within a server.';
 
 const client = new Discord.Client<true>({
+  failIfNotExists: false,
   intents: [Discord.Intents.FLAGS.GUILD_MESSAGES, Discord.Intents.FLAGS.GUILDS],
   presence: {
     activities: [

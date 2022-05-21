@@ -4,6 +4,11 @@ All notable changes to this project will be documented in this file.
 
 ## Versions
 
+### 2.1.1
+
+* Fix TTS not working for slash commands (with a somewhat janky solution)
+* Update dependencies (discord.js 13.7)
+
 ### 2.1.0
 
 * Update dependencies (typeorm 0.3)

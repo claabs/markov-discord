@@ -754,8 +754,22 @@ client.on('interactionCreate', async (interaction) => {
       const debug = interaction.options.getBoolean('debug') || false;
       const startSeed = interaction.options.getString('seed')?.trim() || undefined;
       const generatedResponse = await generateResponse(interaction, { tts, debug, startSeed });
-      if (generatedResponse.message) await interaction.editReply(generatedResponse.message);
-      else await interaction.deleteReply();
+
+      /**
+       * TTS doesn't work when using editReply, so instead we use delete + followUp
+       * However, delete + followUp is ugly and shows the bot replying to "Message could not be loaded.",
+       * so we avoid it if possible
+       */
+      if (generatedResponse.message) {
+        if (generatedResponse.message.tts) {
+          await interaction.deleteReply();
+          await interaction.followUp(generatedResponse.message);
+        } else {
+          await interaction.editReply(generatedResponse.message);
+        }
+      } else {
+        await interaction.deleteReply();
+      }
       if (generatedResponse.debug) await interaction.followUp(generatedResponse.debug);
       if (generatedResponse.error) {
         await interaction.followUp({ ...generatedResponse.error, ephemeral: true });

@@ -12,7 +12,7 @@ import type { PackageJsonPerson } from 'types-package-json';
 import makeEta from 'simple-eta';
 import formatDistanceToNow from 'date-fns/formatDistanceToNow';
 import addSeconds from 'date-fns/addSeconds';
-import type { APIInteractionGuildMember, APISelectMenuComponent } from 'discord-api-types';
+import type { APIInteractionGuildMember, APISelectMenuComponent } from 'discord-api-types/v9';
 import L from './logger';
 import { Channel } from './entity/Channel';
 import { Guild } from './entity/Guild';
@@ -38,6 +38,11 @@ interface SelectMenuChannel {
   listen?: boolean;
   name?: string;
 }
+
+/**
+ * Reply options that can be used in both MessageOptions and InteractionReplyOptions
+ */
+type AgnosticReplyOptions = Omit<Discord.MessageOptions, 'reply' | 'stickers' | 'flags'>;
 
 const INVALID_PERMISSIONS_MESSAGE = 'You do not have the permissions for this action.';
 const INVALID_GUILD_MESSAGE = 'This action must be performed within a server.';
@@ -436,9 +441,9 @@ async function saveGuildMessageHistory(
 }
 
 interface GenerateResponse {
-  message?: Discord.MessageOptions;
-  debug?: Discord.MessageOptions;
-  error?: Discord.MessageOptions;
+  message?: AgnosticReplyOptions;
+  debug?: AgnosticReplyOptions;
+  error?: AgnosticReplyOptions;
 }
 
 interface GenerateOptions {
@@ -475,7 +480,7 @@ async function generateResponse(
     const response = await markov.generate<MarkovDataCustom>(markovGenerateOptions);
     L.info({ string: response.string }, 'Generated response text');
     L.debug({ response }, 'Generated response object');
-    const messageOpts: Discord.MessageOptions = {
+    const messageOpts: AgnosticReplyOptions = {
       tts,
       allowedMentions: { repliedUser: false, parse: [] },
     };
@@ -543,10 +548,13 @@ function getChannelsFromInteraction(
   return textChannels;
 }
 
-function helpMessage(): Discord.MessageOptions {
+function helpMessage(): AgnosticReplyOptions {
   const avatarURL = client.user.avatarURL() || undefined;
   const embed = new Discord.MessageEmbed()
-    .setAuthor(client.user.username || packageJson().name, avatarURL)
+    .setAuthor({
+      name: client.user.username || packageJson().name,
+      iconURL: avatarURL,
+    })
     .setThumbnail(avatarURL as string)
     .setDescription(
       `A Markov chain chatbot that speaks based on learned messages from previous chat input.`
@@ -575,9 +583,11 @@ function helpMessage(): Discord.MessageOptions {
       `${config.messageCommandPrefix} tts or /${messageCommand.name} tts: True`,
       `Runs the ${config.messageCommandPrefix} command and reads it with text-to-speech.`
     )
-    .setFooter(
-      `${packageJson().name} ${getVersion()} by ${(packageJson().author as PackageJsonPerson).name}`
-    );
+    .setFooter({
+      text: `${packageJson().name} ${getVersion()} by ${
+        (packageJson().author as PackageJsonPerson).name
+      }`,
+    });
   return {
     embeds: [embed],
   };
@@ -596,11 +606,11 @@ function generateInviteUrl(): string {
   });
 }
 
-function inviteMessage(): Discord.MessageOptions {
+function inviteMessage(): AgnosticReplyOptions {
   const avatarURL = client.user.avatarURL() || undefined;
   const inviteUrl = generateInviteUrl();
   const embed = new Discord.MessageEmbed()
-    .setAuthor(`Invite ${client.user?.username}`, avatarURL)
+    .setAuthor({ name: `Invite ${client.user?.username}`, iconURL: avatarURL })
     .setThumbnail(avatarURL as string)
     .addField('Invite', `[Invite ${client.user.username} to your server](${inviteUrl})`);
   return { embeds: [embed] };

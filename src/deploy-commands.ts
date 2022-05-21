@@ -1,6 +1,6 @@
 import { SlashCommandBuilder, SlashCommandChannelOption } from '@discordjs/builders';
 import { REST } from '@discordjs/rest';
-import { ChannelType, Routes } from 'discord-api-types/v9';
+import { ChannelType, Routes } from 'discord-api-types/v10';
 import { config } from './config';
 import { packageJson } from './util';
 
@@ -43,7 +43,7 @@ const channelOptionsGenerator = (builder: SlashCommandChannelOption, index: numb
     .setName(`channel-${index + 1}`)
     .setDescription('A text channel')
     .setRequired(index === 0)
-    .addChannelType(ChannelType.GuildText);
+    .addChannelTypes(ChannelType.GuildText);
 
 export const listenChannelCommand = new SlashCommandBuilder()
   .setName('listen')
@@ -96,7 +96,7 @@ const commands = [
 ];
 
 export async function deployCommands(clientId: string) {
-  const rest = new REST({ version: '9' }).setToken(config.token);
+  const rest = new REST({ version: '10' }).setToken(config.token);
   if (config.devGuildId) {
     await rest.put(Routes.applicationGuildCommands(clientId, config.devGuildId), {
       body: commands,

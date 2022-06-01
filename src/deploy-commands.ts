@@ -85,6 +85,20 @@ export const trainCommand = new SlashCommandBuilder()
   .setName('train')
   .setDescription(
     'Train from past messages from the configured listened channels. This takes a while.'
+  )
+  .addBooleanOption((clean) =>
+    clean
+      .setName('clean')
+      .setDescription(
+        'Whether the database should be emptied before training. Default is true (recommended).'
+      )
+      .setRequired(false)
+  )
+  .addAttachmentOption((json) =>
+    json
+      .setName('json')
+      .setDescription('Train from a provided JSON file rather than channel history.')
+      .setRequired(false)
   );
 
 const commands = [

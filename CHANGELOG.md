@@ -4,6 +4,11 @@ All notable changes to this project will be documented in this file.
 
 ## Versions
 
+### 2.2.0
+
+* Add a `clean` option flag to the `/train` command to allow retraining without overwriting
+* Add the ability to train from file of messages (#31)
+
 ### 2.1.1
 
 * Fix TTS not working for slash commands (with a somewhat janky solution)

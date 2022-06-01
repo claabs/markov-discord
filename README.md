@@ -14,6 +14,11 @@ A Markov chain bot using markov-strings.
     * User: `/mark`
     * Bot: ![worms are not baby snakes, by the way](img/respond.png)
 
+### Training from a file
+
+Using the `json` option in the `/train` command, you can import a list of messages.
+An example JSON file can be seen [here](img/example-training.json).
+
 ## Setup
 
 This bot stores your Discord server's entire message history, so a public instance to invite to your server is not available due to obvious data privacy concerns. Instead, you can host it yourself.

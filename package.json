@@ -1,6 +1,6 @@
 {
   "name": "markov-discord",
-  "version": "2.1.1",
+  "version": "2.2.0",
   "description": "A conversational Markov chain bot for Discord",
   "main": "dist/index.js",
   "scripts": {
@@ -46,6 +46,7 @@
     "fs-extra": "^10.1.0",
     "json5": "^2.2.1",
     "markov-strings-db": "^4.2.0",
+    "node-fetch": "^2.6.7",
     "pino": "^7.11.0",
     "pino-pretty": "^7.6.1",
     "reflect-metadata": "^0.1.13",

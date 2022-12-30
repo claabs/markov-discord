@@ -44,7 +44,7 @@
     "dotenv": "^16.0.1",
     "erlpack": "github:discord/erlpack",
     "fs-extra": "^10.1.0",
-    "json5": "^2.2.1",
+    "json5": "^2.2.2",
     "markov-strings-db": "^4.2.0",
     "node-fetch": "^2.6.7",
     "pino": "^7.11.0",

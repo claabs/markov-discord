@@ -35,7 +35,7 @@ Running this bot in Docker is the easiest way to ensure it runs as expected and 
 1. Open a command prompt and run:
 
     ```sh
-    docker run --restart unless-stopped --rm -ti -v /my/host/dir:/usr/app/config ghcr.io/claabs/markov-discord:latest
+    docker run --restart unless-stopped -d -v /my/host/dir:/usr/app/config ghcr.io/claabs/markov-discord:latest
     ```
 
     Where `/my/host/dir` is a accessible path on your system. `--restart=unless-stopped` is recommended in case an unexpected error crashes the bot.

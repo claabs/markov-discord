@@ -52,7 +52,7 @@
     "reflect-metadata": "^0.1.13",
     "simple-eta": "^3.0.2",
     "source-map-support": "^0.5.21",
-    "typeorm": "^0.3.6",
+    "typeorm": "^0.3.14",
     "utf-8-validate": "^5.0.9",
     "zlib-sync": "^0.1.7"
   },

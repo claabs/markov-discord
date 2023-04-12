@@ -49,7 +49,7 @@ An example JSON file can be seen <a href="img/example-training.json">here</a>.</
 <li><p><a href="https://docs.docker.com/get-docker/">Install Docker for your OS</a></p>
 </li>
 <li><p>Open a command prompt and run:</p>
-<pre><code class="language-sh"><span class="hl-0">docker run --restart unless-stopped --rm -ti -v /my/host/dir:/usr/app/config ghcr.io/claabs/markov-discord:latest</span>
+<pre><code class="language-sh"><span class="hl-0">docker run --restart unless-stopped -d -v /my/host/dir:/usr/app/config ghcr.io/claabs/markov-discord:latest</span>
 </code></pre>
 <p> Where <code>/my/host/dir</code> is a accessible path on your system. <code>--restart=unless-stopped</code> is recommended in case an unexpected error crashes the bot.</p>
 </li>

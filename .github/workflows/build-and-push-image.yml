@@ -45,7 +45,7 @@ jobs:
           tags: |
             charlocharlie/markov-discord:latest
             ghcr.io/${{ github.repository }}:latest
-          platforms: linux/amd64,linux/arm64,linux/arm/v7,linux/arm/v6
+          platforms: linux/amd64,linux/arm64
           build-args: |
             COMMIT_SHA=${{ github.sha }}
           cache-from: type=gha,scope=${{ github.workflow }}

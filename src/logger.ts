@@ -15,7 +15,7 @@ const logger = pino(
   },
   PinoPretty({
     translateTime: `SYS:standard`,
-  })
+  }),
 );
 
 export default logger;

@@ -1,7 +1,7 @@
 ########
 # BASE
 ########
-FROM node:16-alpine3.15 as base
+FROM node:20-alpine3.20 as base
 
 WORKDIR /usr/app
 
@@ -16,7 +16,7 @@ FROM base as prodDeps
 COPY package*.json ./
 # Install build tools for erlpack, then install prod deps only
 RUN apk add --no-cache make gcc g++ python3 \
-    && npm ci --only=production
+    && npm ci --omit=dev
 
 ########
 # BUILD
@@ -26,7 +26,7 @@ FROM base as build
 COPY package*.json ./
 # Install build tools for erlpack, then install prod deps only
 RUN apk add --no-cache make gcc g++ python3 \
-    && npm ci --only=production
+    && npm ci --omit=dev
 
 # Copy all jsons
 COPY package*.json tsconfig.json ./

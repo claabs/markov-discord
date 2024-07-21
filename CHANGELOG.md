@@ -4,6 +4,11 @@ All notable changes to this project will be documented in this file.
 
 ## Versions
 
+### 2.3.0
+
+* Update to Node 20 and Discord.js 14. Update a million dependencies
+* Fix empty attachment bug (#61)
+
 ### 2.2.0
 
 * Add a `clean` option flag to the `/train` command to allow retraining without overwriting

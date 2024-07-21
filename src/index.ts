@@ -12,8 +12,6 @@ import type { PackageJsonPerson } from 'types-package-json';
 import makeEta from 'simple-eta';
 import formatDistanceToNow from 'date-fns/formatDistanceToNow';
 import addSeconds from 'date-fns/addSeconds';
-import type { APIInteractionGuildMember, APISelectMenuComponent } from 'discord-api-types/v9';
-import fetch from 'node-fetch';
 import L from './logger';
 import { Channel } from './entity/Channel';
 import { Guild } from './entity/Guild';
@@ -40,21 +38,30 @@ interface SelectMenuChannel {
   name?: string;
 }
 
+interface IRefreshUrlsRes {
+  refreshed_urls: Array<{
+    original: string;
+    refreshed: string;
+  }>;
+}
+
 /**
  * Reply options that can be used in both MessageOptions and InteractionReplyOptions
  */
-type AgnosticReplyOptions = Omit<Discord.MessageOptions, 'reply' | 'stickers' | 'flags'>;
+type AgnosticReplyOptions = Omit<Discord.MessageCreateOptions, 'reply' | 'stickers' | 'flags'>;
 
 const INVALID_PERMISSIONS_MESSAGE = 'You do not have the permissions for this action.';
 const INVALID_GUILD_MESSAGE = 'This action must be performed within a server.';
 
+const rest = new Discord.REST({ version: '10' }).setToken(config.token);
+
 const client = new Discord.Client<true>({
   failIfNotExists: false,
-  intents: [Discord.Intents.FLAGS.GUILD_MESSAGES, Discord.Intents.FLAGS.GUILDS],
+  intents: [Discord.GatewayIntentBits.GuildMessages, Discord.GatewayIntentBits.Guilds],
   presence: {
     activities: [
       {
-        type: 'PLAYING',
+        type: Discord.ActivityType.Playing,
         name: config.activity,
         url: packageJson().homepage,
       },
@@ -74,6 +81,14 @@ const markovGenerateOptions: MarkovGenerateOptions<MarkovDataCustom> = {
   },
   maxTries: config.maxTries,
 };
+
+async function refreshCdnUrl(url: string): Promise<string> {
+  // Thank you https://github.com/ShufflePerson/Discord_CDN
+  const resp = (await rest.post(`/attachments/refresh-urls`, {
+    body: { attachment_urls: [url] },
+  })) as IRefreshUrlsRes;
+  return resp.refreshed_urls[0].refreshed;
+}
 
 async function getMarkovByGuildId(guildId: string): Promise<Markov> {
   const markov = new Markov({ id: guildId, options: { ...markovOpts, id: guildId } });
@@ -117,7 +132,7 @@ async function getValidChannels(guild: Discord.Guild): Promise<Discord.TextChann
           L.error({ erroredChannel: dbc, channelId }, 'Error fetching channel');
           throw err;
         }
-      })
+      }),
     )
   ).filter((c): c is Discord.TextChannel => c !== null && c instanceof Discord.TextChannel);
   return channels;
@@ -127,7 +142,7 @@ async function getTextChannels(guild: Discord.Guild): Promise<SelectMenuChannel[
   L.trace('Getting text channels for select menu');
   const MAX_SELECT_OPTIONS = 25;
   const textChannels = guild.channels.cache.filter(
-    (c): c is Discord.TextChannel => c !== null && c instanceof Discord.TextChannel
+    (c): c is Discord.TextChannel => c !== null && c instanceof Discord.TextChannel,
   );
   const foundDbChannels = await Channel.findByIds(Array.from(textChannels.keys()));
   const foundDbChannelsWithName: SelectMenuChannel[] = foundDbChannels.map((c) => ({
@@ -153,7 +168,7 @@ async function addValidChannels(channels: Discord.TextChannel[], guildId: string
 
 async function removeValidChannels(
   channels: Discord.TextChannel[],
-  guildId: string
+  guildId: string,
 ): Promise<void> {
   L.trace(`Removing ${channels.length} channels from valid list`);
   const dbChannels = channels.map((c) => {
@@ -168,12 +183,14 @@ async function removeValidChannels(
  * @return {Boolean} True if the sender is a moderator.
  *
  */
-function isModerator(member: Discord.GuildMember | APIInteractionGuildMember | null): boolean {
+function isModerator(
+  member: Discord.GuildMember | Discord.APIInteractionGuildMember | null,
+): boolean {
   const MODERATOR_PERMISSIONS: Discord.PermissionResolvable[] = [
-    'ADMINISTRATOR',
-    'MANAGE_CHANNELS',
-    'KICK_MEMBERS',
-    'MOVE_MEMBERS',
+    'Administrator',
+    'ManageChannels',
+    'KickMembers',
+    'MoveMembers',
   ];
   if (!member) return false;
   if (member instanceof Discord.GuildMember) {
@@ -193,7 +210,9 @@ function isModerator(member: Discord.GuildMember | APIInteractionGuildMember | n
  * @return {Boolean} True if the sender is a moderator.
  *
  */
-function isAllowedUser(member: Discord.GuildMember | APIInteractionGuildMember | null): boolean {
+function isAllowedUser(
+  member: Discord.GuildMember | Discord.APIInteractionGuildMember | null,
+): boolean {
   if (!config.userRoleIds.length) return true;
   if (!member) return false;
   if (member instanceof Discord.GuildMember) {
@@ -255,7 +274,7 @@ function messageToData(message: Discord.Message): AddDataProps {
  */
 async function saveGuildMessageHistory(
   interaction: Discord.Message | Discord.CommandInteraction,
-  clean = true
+  clean = true,
 ): Promise<string> {
   if (!isModerator(interaction.member)) return INVALID_PERMISSIONS_MESSAGE;
   if (!interaction.guildId || !interaction.guild) return INVALID_GUILD_MESSAGE;
@@ -280,31 +299,31 @@ async function saveGuildMessageHistory(
   const messageContent = `Parsing past messages from ${channels.length} channel(s).`;
 
   const NO_COMPLETED_CHANNELS_TEXT = 'None';
-  const completedChannelsField: Discord.EmbedFieldData = {
+  const completedChannelsField: Discord.APIEmbedField = {
     name: 'Completed Channels',
     value: NO_COMPLETED_CHANNELS_TEXT,
     inline: true,
   };
-  const currentChannelField: Discord.EmbedFieldData = {
+  const currentChannelField: Discord.APIEmbedField = {
     name: 'Current Channel',
     value: `<#${channels[0].id}>`,
     inline: true,
   };
-  const currentChannelPercent: Discord.EmbedFieldData = {
+  const currentChannelPercent: Discord.APIEmbedField = {
     name: 'Channel Progress',
     value: '0%',
     inline: true,
   };
-  const currentChannelEta: Discord.EmbedFieldData = {
+  const currentChannelEta: Discord.APIEmbedField = {
     name: 'Channel Time Remaining',
     value: 'Pending...',
     inline: true,
   };
-  const embedOptions: Discord.MessageEmbedOptions = {
+  const embedOptions: Discord.EmbedData = {
     title: 'Training Progress',
     fields: [completedChannelsField, currentChannelField, currentChannelPercent, currentChannelEta],
   };
-  const embed = new Discord.MessageEmbed(embedOptions);
+  const embed = new Discord.EmbedBuilder(embedOptions);
   let progressMessage: Discord.Message;
   const updateMessageData = { content: messageContent, embeds: [embed] };
   if (interaction instanceof Discord.Message) {
@@ -338,7 +357,7 @@ async function saveGuildMessageHistory(
       } catch (err) {
         L.error(err);
         L.error(
-          `Error retreiving messages before ${oldestMessageID} in channel ${channel.name}. This is probably a permissions issue.`
+          `Error retreiving messages before ${oldestMessageID} in channel ${channel.name}. This is probably a permissions issue.`,
         );
         break; // Give up on this channel
       }
@@ -347,7 +366,7 @@ async function saveGuildMessageHistory(
       const threadChannels = channelBatchMessages
         .filter((m) => m.hasThread)
         .map((m) => m.thread)
-        .filter((c): c is Discord.ThreadChannel => c !== null);
+        .filter((c): c is Discord.AnyThreadChannel => c !== null);
       if (threadChannels.length > 0) {
         L.debug(`Found ${threadChannels.length} threads. Reading into them.`);
         // eslint-disable-next-line no-restricted-syntax
@@ -367,13 +386,13 @@ async function saveGuildMessageHistory(
             } catch (err) {
               L.error(err);
               L.error(
-                `Error retreiving thread messages before ${oldestThreadMessageID} in thread ${threadChannel.name}. This is probably a permissions issue.`
+                `Error retreiving thread messages before ${oldestThreadMessageID} in thread ${threadChannel.name}. This is probably a permissions issue.`,
               );
               break; // Give up on this thread
             }
             L.trace(
               { threadMessagesCount: threadBatchMessages.size },
-              `Found some thread messages`
+              `Found some thread messages`,
             );
             const lastThreadMessage = threadBatchMessages.last();
             allBatchMessages = allBatchMessages.concat(threadBatchMessages); // Add the thread messages to this message batch to be included in later processing
@@ -431,12 +450,12 @@ async function saveGuildMessageHistory(
         lastUpdate = messagesCount;
         L.debug(
           { messagesCount, pctComplete: currentChannelPercent.value },
-          'Sending metrics update'
+          'Sending metrics update',
         );
         // eslint-disable-next-line no-await-in-loop
         await progressMessage.edit({
           ...updateMessageData,
-          embeds: [new Discord.MessageEmbed(embedOptions)],
+          embeds: [new Discord.EmbedBuilder(embedOptions)],
         });
       }
     }
@@ -455,9 +474,9 @@ interface JSONImport {
  * Train from an attached JSON file
  */
 async function trainFromAttachmentJson(
-  attachment: Discord.MessageAttachment,
+  attachmentUrl: string,
   interaction: Discord.CommandInteraction,
-  clean = true
+  clean = true,
 ): Promise<string> {
   if (!isModerator(interaction.member)) return INVALID_PERMISSIONS_MESSAGE;
   if (!interaction.guildId || !interaction.guild) return INVALID_GUILD_MESSAGE;
@@ -466,8 +485,7 @@ async function trainFromAttachmentJson(
 
   let trainingData: AddDataProps[];
   try {
-    const importAttachmentUrl = attachment.attachment.toString();
-    const getResp = await fetch(importAttachmentUrl);
+    const getResp = await fetch(attachmentUrl);
     if (!getResp.ok) throw new Error(getResp.statusText);
     const importData = (await getResp.json()) as JSONImport[];
 
@@ -480,7 +498,7 @@ async function trainFromAttachmentJson(
       }
       if (datum.attachments?.every((a) => typeof a !== 'string')) {
         throw new Error(
-          `Entry at index ${index} must have all "attachments" each with a type of string`
+          `Entry at index ${index} must have all "attachments" each with a type of string`,
         );
       }
       let custom: MarkovDataCustom | undefined;
@@ -530,7 +548,7 @@ interface GenerateOptions {
  */
 async function generateResponse(
   interaction: Discord.Message | Discord.CommandInteraction,
-  options?: GenerateOptions
+  options?: GenerateOptions,
 ): Promise<GenerateResponse> {
   L.debug({ options }, 'Responding...');
   const { tts = false, debug = false, startSeed } = options || {};
@@ -558,7 +576,8 @@ async function generateResponse(
       .flatMap((ref) => (ref.custom as MarkovDataCustom).attachments);
     if (attachmentUrls.length > 0) {
       const randomRefAttachment = getRandomElement(attachmentUrls);
-      messageOpts.files = [randomRefAttachment];
+      const refreshedUrl = await refreshCdnUrl(randomRefAttachment);
+      messageOpts.files = [refreshedUrl];
     } else {
       const randomMessage = await MarkovInputData.createQueryBuilder<
         MarkovInputData<MarkovDataCustom>
@@ -570,7 +589,9 @@ async function generateResponse(
         .getOne();
       const randomMessageAttachmentUrls = randomMessage?.custom?.attachments;
       if (randomMessageAttachmentUrls?.length) {
-        messageOpts.files = [{ attachment: getRandomElement(randomMessageAttachmentUrls) }];
+        const attachmentUrl = getRandomElement(randomMessageAttachmentUrls);
+        const refreshedUrl = await refreshCdnUrl(attachmentUrl);
+        messageOpts.files = [{ attachment: refreshedUrl }];
       }
     }
     messageOpts.content = response.string;
@@ -606,52 +627,59 @@ async function listValidChannels(interaction: Discord.CommandInteraction): Promi
 }
 
 function getChannelsFromInteraction(
-  interaction: Discord.CommandInteraction
+  interaction: Discord.ChatInputCommandInteraction,
 ): Discord.TextChannel[] {
   const channels = Array.from(Array(CHANNEL_OPTIONS_MAX).keys()).map((index) =>
-    interaction.options.getChannel(`channel-${index + 1}`, index === 0)
+    interaction.options.getChannel(`channel-${index + 1}`, index === 0),
   );
   const textChannels = channels.filter(
-    (c): c is Discord.TextChannel => c !== null && c instanceof Discord.TextChannel
+    (c): c is Discord.TextChannel => c !== null && c instanceof Discord.TextChannel,
   );
   return textChannels;
 }
 
 function helpMessage(): AgnosticReplyOptions {
   const avatarURL = client.user.avatarURL() || undefined;
-  const embed = new Discord.MessageEmbed()
+  const embed = new Discord.EmbedBuilder()
     .setAuthor({
       name: client.user.username || packageJson().name,
       iconURL: avatarURL,
     })
     .setThumbnail(avatarURL as string)
     .setDescription(
-      `A Markov chain chatbot that speaks based on learned messages from previous chat input.`
+      `A Markov chain chatbot that speaks based on learned messages from previous chat input.`,
     )
-    .addField(
-      `${config.messageCommandPrefix} or /${messageCommand.name}`,
-      `Generates a sentence to say based on the chat database. Send your message as TTS to recieve it as TTS.`
-    )
-    .addField(
-      `/${listenChannelCommand.name}`,
-      `Add, remove, list, or modify the list of channels the bot listens to.`
-    )
-    .addField(
-      `${config.messageCommandPrefix} train or /${trainCommand.name}`,
-      `Fetches the maximum amount of previous messages in the listened to text channels. This takes some time.`
-    )
-    .addField(
-      `${config.messageCommandPrefix} invite or /${inviteCommand.name}`,
-      `Post this bot's invite URL.`
-    )
-    .addField(
-      `${config.messageCommandPrefix} debug or /${messageCommand.name} debug: True`,
-      `Runs the ${config.messageCommandPrefix} command and follows it up with debug info.`
-    )
-    .addField(
-      `${config.messageCommandPrefix} tts or /${messageCommand.name} tts: True`,
-      `Runs the ${config.messageCommandPrefix} command and reads it with text-to-speech.`
-    )
+    .addFields([
+      {
+        name: `${config.messageCommandPrefix} or /${messageCommand.name}`,
+        value: `Generates a sentence to say based on the chat database. Send your message as TTS to recieve it as TTS.`,
+      },
+
+      {
+        name: `/${listenChannelCommand.name}`,
+        value: `Add, remove, list, or modify the list of channels the bot listens to.`,
+      },
+
+      {
+        name: `${config.messageCommandPrefix} train or /${trainCommand.name}`,
+        value: `Fetches the maximum amount of previous messages in the listened to text channels. This takes some time.`,
+      },
+
+      {
+        name: `${config.messageCommandPrefix} invite or /${inviteCommand.name}`,
+        value: `Post this bot's invite URL.`,
+      },
+
+      {
+        name: `${config.messageCommandPrefix} debug or /${messageCommand.name} debug: True`,
+        value: `Runs the ${config.messageCommandPrefix} command and follows it up with debug info.`,
+      },
+
+      {
+        name: `${config.messageCommandPrefix} tts or /${messageCommand.name} tts: True`,
+        value: `Runs the ${config.messageCommandPrefix} command and reads it with text-to-speech.`,
+      },
+    ])
     .setFooter({
       text: `${packageJson().name} ${getVersion()} by ${
         (packageJson().author as PackageJsonPerson).name
@@ -664,13 +692,13 @@ function helpMessage(): AgnosticReplyOptions {
 
 function generateInviteUrl(): string {
   return client.generateInvite({
-    scopes: ['bot', 'applications.commands'],
+    scopes: [Discord.OAuth2Scopes.Bot, Discord.OAuth2Scopes.ApplicationsCommands],
     permissions: [
-      'VIEW_CHANNEL',
-      'SEND_MESSAGES',
-      'SEND_TTS_MESSAGES',
-      'ATTACH_FILES',
-      'READ_MESSAGE_HISTORY',
+      'ViewChannel',
+      'SendMessages',
+      'SendTTSMessages',
+      'AttachFiles',
+      'ReadMessageHistory',
     ],
   });
 }
@@ -678,16 +706,18 @@ function generateInviteUrl(): string {
 function inviteMessage(): AgnosticReplyOptions {
   const avatarURL = client.user.avatarURL() || undefined;
   const inviteUrl = generateInviteUrl();
-  const embed = new Discord.MessageEmbed()
+  const embed = new Discord.EmbedBuilder()
     .setAuthor({ name: `Invite ${client.user?.username}`, iconURL: avatarURL })
     .setThumbnail(avatarURL as string)
-    .addField('Invite', `[Invite ${client.user.username} to your server](${inviteUrl})`);
+    .addFields([
+      { name: 'Invite', value: `[Invite ${client.user.username} to your server](${inviteUrl})` },
+    ]);
   return { embeds: [embed] };
 }
 
 async function handleResponseMessage(
   generatedResponse: GenerateResponse,
-  message: Discord.Message
+  message: Discord.Message,
 ): Promise<void> {
   if (generatedResponse.message) await message.reply(generatedResponse.message);
   if (generatedResponse.debug) await message.reply(generatedResponse.debug);
@@ -696,7 +726,7 @@ async function handleResponseMessage(
 
 async function handleUnprivileged(
   interaction: Discord.CommandInteraction | Discord.SelectMenuInteraction,
-  deleteReply = true
+  deleteReply = true,
 ): Promise<void> {
   if (deleteReply) await interaction.deleteReply();
   await interaction.followUp({ content: INVALID_PERMISSIONS_MESSAGE, ephemeral: true });
@@ -704,7 +734,7 @@ async function handleUnprivileged(
 
 async function handleNoGuild(
   interaction: Discord.CommandInteraction | Discord.SelectMenuInteraction,
-  deleteReply = true
+  deleteReply = true,
 ): Promise<void> {
   if (deleteReply) await interaction.deleteReply();
   await interaction.followUp({ content: INVALID_GUILD_MESSAGE, ephemeral: true });
@@ -820,7 +850,7 @@ client.on('threadDelete', async (thread) => {
 
 // eslint-disable-next-line consistent-return
 client.on('interactionCreate', async (interaction) => {
-  if (interaction.isCommand()) {
+  if (interaction.isChatInputCommand()) {
     L.info({ command: interaction.commandName }, 'Recieved slash command');
 
     if (interaction.commandName === helpCommand.name) {
@@ -869,7 +899,7 @@ client.on('interactionCreate', async (interaction) => {
         const channels = getChannelsFromInteraction(interaction);
         await addValidChannels(channels, interaction.guildId);
         await interaction.editReply(
-          `Added ${channels.length} text channels to the list. Use \`/train\` to update the past known messages.`
+          `Added ${channels.length} text channels to the list. Use \`/train\` to update the past known messages.`,
         );
       } else if (subCommand === 'remove') {
         if (!isModerator(interaction.member)) {
@@ -881,7 +911,7 @@ client.on('interactionCreate', async (interaction) => {
         const channels = getChannelsFromInteraction(interaction);
         await removeValidChannels(channels, interaction.guildId);
         await interaction.editReply(
-          `Removed ${channels.length} text channels from the list. Use \`/train\` to remove these channels from the past known messages.`
+          `Removed ${channels.length} text channels from the list. Use \`/train\` to remove these channels from the past known messages.`,
         );
       } else if (subCommand === 'modify') {
         if (!interaction.guild) {
@@ -892,8 +922,8 @@ client.on('interactionCreate', async (interaction) => {
         }
         await interaction.deleteReply();
         const dbTextChannels = await getTextChannels(interaction.guild);
-        const row = new Discord.MessageActionRow().addComponents(
-          new Discord.MessageSelectMenu()
+        const row = new Discord.ActionRowBuilder<Discord.StringSelectMenuBuilder>().addComponents(
+          new Discord.StringSelectMenuBuilder()
             .setCustomId('listen-modify-select')
             .setPlaceholder('Nothing selected')
             .setMinValues(0)
@@ -903,8 +933,8 @@ client.on('interactionCreate', async (interaction) => {
                 label: `#${c.name}` || c.id,
                 value: c.id,
                 default: c.listen || false,
-              }))
-            )
+              })),
+            ),
         );
 
         await interaction.followUp({
@@ -919,7 +949,7 @@ client.on('interactionCreate', async (interaction) => {
       const trainingJSON = interaction.options.getAttachment('json');
 
       if (trainingJSON) {
-        const responseMessage = await trainFromAttachmentJson(trainingJSON, interaction, clean);
+        const responseMessage = await trainFromAttachmentJson(trainingJSON.url, interaction, clean);
         await interaction.followUp(responseMessage);
       } else {
         const reply = (await interaction.fetchReply()) as Discord.Message; // Must fetch the reply ASAP
@@ -928,7 +958,7 @@ client.on('interactionCreate', async (interaction) => {
         await reply.reply({ content: responseMessage });
       }
     }
-  } else if (interaction.isSelectMenu()) {
+  } else if (interaction.isStringSelectMenu()) {
     if (interaction.customId === 'listen-modify-select') {
       await interaction.deferUpdate();
       const { guild } = interaction;
@@ -940,14 +970,15 @@ client.on('interactionCreate', async (interaction) => {
       }
 
       const allChannels =
-        (interaction.component as APISelectMenuComponent).options?.map((o) => o.value) || [];
+        (interaction.component as Discord.StringSelectMenuComponent).options?.map((o) => o.value) ||
+        [];
       const selectedChannelIds = interaction.values;
 
       const textChannels = (
         await Promise.all(
           allChannels.map(async (c) => {
             return guild.channels.fetch(c);
-          })
+          }),
         )
       ).filter((c): c is Discord.TextChannel => c !== null && c instanceof Discord.TextChannel);
       const unselectedChannels = textChannels.filter((t) => !selectedChannelIds.includes(t.id));

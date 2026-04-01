@@ -32,11 +32,23 @@ This bot stores your Discord server's entire message history, so a public instan
 Running this bot in Docker is the easiest way to ensure it runs as expected and can easily recieve updates.
 
 1. [Install Docker for your OS](https://docs.docker.com/get-docker/)
-1. Open a command prompt and run:
+    1. Docker run
 
-    ```sh
-    docker run --restart unless-stopped -d -v /my/host/dir:/usr/app/config ghcr.io/claabs/markov-discord:latest
-    ```
+        ```sh
+        docker run --restart unless-stopped --init -d -v /my/host/dir:/usr/app/config ghcr.io/claabs/markov-discord:latest
+        ```
+
+    1. Docker Compose:
+
+        ```yml
+        services:
+          markov-discord:
+            image: ghcr.io/claabs/markov-discord:latest
+            restart: unless-stopped
+            init: true
+            volumes:
+            - /my/host/dir:/usr/app/config
+         ```
 
     Where `/my/host/dir` is a accessible path on your system. `--restart=unless-stopped` is recommended in case an unexpected error crashes the bot.
 1. The Docker container will create a default config file in your mounted volume (`/my/host/dir`). Open it and add your bot token. You may change any other values to your liking as well. Details for each configuration item can be found here: <https://claabs.github.io/markov-discord/classes/AppConfig.html>
@@ -44,7 +56,7 @@ Running this bot in Docker is the easiest way to ensure it runs as expected and 
 
 ### Windows
 
-1. Install [Node.js 16 or newer](https://nodejs.org/en/download/).
+1. Install [Node.js 24 or newer](https://nodejs.org/en/download/).
 1. Download this repository using git in a command prompt
 
     ```cmd

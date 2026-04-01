@@ -1,35 +1,19 @@
 ########
 # BASE
 ########
-FROM node:20-alpine3.20 as base
+FROM node:24-alpine3.23 AS base
 
 WORKDIR /usr/app
 
-RUN apk add --no-cache tini
-
-############
-# PROD DEPS
-############
-
-FROM base as prodDeps
-
 COPY package*.json ./
-# Install build tools for erlpack, then install prod deps only
-RUN apk add --no-cache make gcc g++ python3 \
-    && npm ci --omit=dev
 
 ########
 # BUILD
 ########
-FROM base as build
+FROM base AS build
 
-COPY package*.json ./
-# Install build tools for erlpack, then install prod deps only
-RUN apk add --no-cache make gcc g++ python3 \
-    && npm ci --omit=dev
-
-# Copy all jsons
-COPY package*.json tsconfig.json ./
+# Copy all tsconfig
+COPY tsconfig.json ./
 
 # Add dev deps
 RUN npm ci
@@ -42,25 +26,19 @@ RUN npm run build
 ########
 # DEPLOY
 ########
-FROM base as deploy
+FROM base AS deploy
 
-USER node
 
-# Steal node_modules from base image
-COPY --from=prodDeps /usr/app/node_modules node_modules
+RUN npm ci --omit=dev
 
 # Steal compiled code from build image
 COPY --from=build /usr/app/dist dist
 
-# Copy package.json for version number
-COPY package.json ./
-
-# RUN mkdir config
+USER node
 
 ARG COMMIT_SHA=""
 
 ENV NODE_ENV=production \
     COMMIT_SHA=${COMMIT_SHA}
 
-ENTRYPOINT ["/sbin/tini", "--"]
 CMD [ "node", "/usr/app/dist/index.js" ]

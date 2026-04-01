@@ -1,6 +1,6 @@
 {
   "name": "markov-discord",
-  "version": "2.3.0",
+  "version": "2.4.0",
   "description": "A conversational Markov chain bot for Discord",
   "main": "dist/index.js",
   "scripts": {
@@ -9,7 +9,7 @@
     "build": "rimraf dist && tsc",
     "lint": "tsc --noEmit && eslint .",
     "docker:build": "docker build . -t charlocharlie/markov-discord:latest --target deploy",
-    "docker:run": "docker run --rm -ti -v $(pwd)/config:/usr/app/config charlocharlie/markov-discord:latest",
+    "docker:run": "docker run --rm -ti --init -v $(pwd)/config:/usr/app/config charlocharlie/markov-discord:latest",
     "typeorm": "node --require ts-node/register ./node_modules/typeorm/cli.js",
     "docs": "typedoc --out docs src/config/classes.ts"
   },
@@ -31,7 +31,7 @@
   },
   "license": "MIT",
   "dependencies": {
-    "better-sqlite3": "^11.10.0",
+    "better-sqlite3": "^12.8.0",
     "bufferutil": "^4.0.8",
     "class-transformer": "^0.5.1",
     "class-validator": "^0.14.1",
@@ -47,9 +47,7 @@
     "reflect-metadata": "^0.2.2",
     "simple-eta": "^3.0.2",
     "source-map-support": "^0.5.21",
-    "typeorm": "^0.3.27",
-    "utf-8-validate": "^6.0.4",
-    "zlib-sync": "^0.1.9"
+    "typeorm": "^0.3.27"
   },
   "devDependencies": {
     "@types/fs-extra": "^11.0.4",
@@ -70,6 +68,6 @@
     "typescript": "5.4"
   },
   "engines": {
-    "node": ">=20"
+    "node": ">=24"
   }
 }

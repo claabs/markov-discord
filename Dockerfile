@@ -7,10 +7,28 @@ WORKDIR /usr/app
 
 COPY package*.json ./
 
+#############
+# BUILD BASE
+#############
+
+FROM base AS buildbase
+
+# Install build tools for bufferutils
+RUN apk add --no-cache make gcc g++ python3
+
+############
+# PROD DEPS
+############
+
+FROM buildbase AS proddeps
+
+# Install prod deps only
+RUN npm ci --omit=dev
+
 ########
 # BUILD
 ########
-FROM base AS build
+FROM buildbase AS build
 
 # Copy all tsconfig
 COPY tsconfig.json ./
@@ -28,13 +46,13 @@ RUN npm run build
 ########
 FROM base AS deploy
 
+USER node
 
-RUN npm ci --omit=dev
+# Steal node_modules from proddeps
+COPY --from=proddeps /usr/app/node_modules node_modules
 
 # Steal compiled code from build image
 COPY --from=build /usr/app/dist dist
-
-USER node
 
 ARG COMMIT_SHA=""
 

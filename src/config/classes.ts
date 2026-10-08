@@ -8,6 +8,7 @@ import {
   IsArray,
   IsInt,
   IsDefined,
+  IsNumber,
   IsNotEmpty,
 } from 'class-validator';
 
@@ -163,4 +164,26 @@ export class AppConfig {
   @IsOptional()
   @IsString()
   devGuildId = process.env.DEV_GUILD_ID;
+
+  /**
+   * Probablity that the bot will respond to any given random message from a human user.
+   * @example 0.1 = 10% chance
+   * @env RANDOM_RESPONSE_CHANCE
+   */
+  @IsOptional()
+  @IsNumber()
+  randomResponseChance = process.env.RANDOM_RESPONSE_CHANCE ? parseFloat(process.env.RANDOM_RESPONSE_CHANCE) : 0.0;
+
+  /**
+   * A list of banned words the bot is not allowed to say
+   * @example ["fuck"]
+   * @default []
+   * @env BANNED_WORDS (comma separated)
+   */
+  @IsArray()
+  @IsString({ each: true })
+  @Type(() => String)
+  @IsOptional()
+  bannedWords = process.env.BANNED_WORDS ? process.env.BANNED_WORDS.split(',').map((word) => word.trim()) : [];
 }
+

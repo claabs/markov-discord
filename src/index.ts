@@ -75,7 +75,7 @@ const markovOpts: MarkovConstructorOptions = {
 
 function normalizeWord(str: string) {
   // [^\w\s] matches anything that is NOT a word character or whitespace
-  return str.replace(/[^\w\s]/g, '').normalize();
+  return str.replace(/[^\w\s]/g, '').normalize().toLowerCase();
 }
 
 const markovGenerateOptions: MarkovGenerateOptions<MarkovDataCustom> = {

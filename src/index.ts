@@ -73,10 +73,15 @@ const markovOpts: MarkovConstructorOptions = {
   stateSize: config.stateSize,
 };
 
+function normalizeWord(str: string) {
+  // [^\w\s] matches anything that is NOT a word character or whitespace
+  return str.replace(/[^\w\s]/g, '').normalize();
+}
+
 const markovGenerateOptions: MarkovGenerateOptions<MarkovDataCustom> = {
   filter: (result): boolean => {
-    const bannedSet = new Set(config.bannedWords);
-    const hasBannedWord = result.refs.some((ref) => bannedSet.has(ref.string));
+    const bannedSet = new Set(config.bannedWords.map((word) => normalizeWord(word)));
+    const hasBannedWord = result.refs.some((ref) => bannedSet.has(normalizeWord(ref.string)));
 
     return (
       result.score >= config.minScore && !result.refs.some((ref) => ref.string === result.string) && !hasBannedWord

@@ -81,7 +81,7 @@ function normalizeWord(str: string) {
 const markovGenerateOptions: MarkovGenerateOptions<MarkovDataCustom> = {
   filter: (result): boolean => {
     const bannedSet = new Set(config.bannedWords.map((word) => normalizeWord(word)));
-    const hasBannedWord = result.refs.some((ref) => bannedSet.has(normalizeWord(ref.string)));
+    const hasBannedWord = result.string.trim().split(/\s+/).some((word) => bannedSet.has(normalizeWord(word)));
 
     return (
       result.score >= config.minScore && !result.refs.some((ref) => ref.string === result.string) && !hasBannedWord

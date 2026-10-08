@@ -186,4 +186,3 @@ export class AppConfig {
   @IsOptional()
   bannedWords = process.env.BANNED_WORDS ? process.env.BANNED_WORDS.split(',').map((word) => word.trim()) : [];
 }
-

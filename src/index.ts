@@ -75,7 +75,7 @@ const markovOpts: MarkovConstructorOptions = {
 
 const markovGenerateOptions: MarkovGenerateOptions<MarkovDataCustom> = {
   filter: (result): boolean => {
-    const hasBannedWord = config.bannedWords.some((word: string) => result.string.toLowerCase().includes(word));
+    const hasBannedWord = result.refs.some((ref) => config.bannedWords.includes(ref.string)) ;
 
     return (
       result.score >= config.minScore && !result.refs.some((ref) => ref.string === result.string) && !hasBannedWord

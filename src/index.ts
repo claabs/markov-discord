@@ -594,8 +594,13 @@ async function generateResponse(
   const markov = await getMarkovByGuildId(interaction.guildId);
 
   try {
-    markovGenerateOptions.startSeed = startSeed;
-    const response = await markov.generate<MarkovDataCustom>(markovGenerateOptions);
+    const generationConfig = {
+      ...markovGenerateOptions,
+      startSeed: startSeed
+    };
+
+    const response = await markov.generate<MarkovDataCustom>(generationConfig);
+
     L.info({ string: response.string }, 'Generated response text');
     L.debug({ response }, 'Generated response object');
     const messageOpts: AgnosticReplyOptions = {
@@ -848,7 +853,8 @@ client.on('messageCreate', async (message) => {
 
         if (!message.mentions.has(client.user!) && Math.random() < config.randomResponseChance) {
           L.debug('Randomly responding to message');
-          const generatedResponse = await generateResponse(message);
+          const startSeed = message.content.replace(/<@!\d+>/g, '').trim();
+          const generatedResponse = await generateResponse(message, { startSeed });
           await handleResponseMessage(generatedResponse, message);
         }
       }

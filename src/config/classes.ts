@@ -185,4 +185,14 @@ export class AppConfig {
   @Type(() => String)
   @IsOptional()
   bannedWords = process.env.BANNED_WORDS ? process.env.BANNED_WORDS.split(',').map((word) => word.trim()) : [];
+
+  /**
+   * Probablity that the bot will actually a send an attachment if one is generated in a response.
+   * @example 0.1 = 10% chance
+   * @env ATTACHMENT_CHANCE
+   */
+  @IsOptional()
+  @IsNumber()
+  attachmentChance = process.env.ATTACHMENT_CHANCE ? parseFloat(process.env.ATTACHMENT_CHANCE) : 1.0;
+
 }

@@ -579,10 +579,11 @@ async function generateResponse(
       tts,
       allowedMentions: { repliedUser: false, parse: [] },
     };
+    const sendAttachment = Math.random() < config.attachmentChance;
     const attachmentUrls = response.refs
       .filter((ref) => ref.custom && 'attachments' in ref.custom)
       .flatMap((ref) => (ref.custom as MarkovDataCustom).attachments);
-    if (attachmentUrls.length > 0) {
+    if (attachmentUrls.length > 0 && sendAttachment) {
       const randomRefAttachment = getRandomElement(attachmentUrls);
       const refreshedUrl = await refreshCdnUrl(randomRefAttachment);
       messageOpts.files = [refreshedUrl];
@@ -596,7 +597,7 @@ async function generateResponse(
         .limit(1)
         .getOne();
       const randomMessageAttachmentUrls = randomMessage?.custom?.attachments;
-      if (randomMessageAttachmentUrls?.length) {
+      if (randomMessageAttachmentUrls?.length && sendAttachment) {
         const attachmentUrl = getRandomElement(randomMessageAttachmentUrls);
         const refreshedUrl = await refreshCdnUrl(attachmentUrl);
         messageOpts.files = [{ attachment: refreshedUrl }];

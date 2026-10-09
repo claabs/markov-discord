@@ -27,6 +27,7 @@ import {
 } from './deploy-commands';
 import { getRandomElement, getVersion, packageJson } from './util';
 import ormconfig from './ormconfig';
+import nlp from 'compromise';
 
 interface MarkovDataCustom {
   attachments: string[];
@@ -78,13 +79,35 @@ function normalizeWord(str: string) {
   return str.replace(/[^\w\s]/g, '').normalize().toLowerCase();
 }
 
+
+function isValidSentence(text: string): boolean {
+  const doc = nlp(text);
+  const lastWord = doc.terms().last();
+
+  // Guard against empty strings or text with no words
+  if (!lastWord.found) {
+    return false;
+  }
+
+  // Compromise allows you to pass a comma-separated list of tags to .has()
+  if (lastWord.has('#Preposition, #Conjunction, #Determiner, #Possessive')) {
+    return false;
+  }
+
+  return true;
+}
+
+
 const markovGenerateOptions: MarkovGenerateOptions<MarkovDataCustom> = {
   filter: (result): boolean => {
     const bannedSet = new Set(config.bannedWords.map((word) => normalizeWord(word)));
     const hasBannedWord = result.string.trim().split(/\s+/).some((word) => bannedSet.has(normalizeWord(word)));
+    const mentionsSelf = result.string.includes(client.user.id);
 
+  
     return (
-      result.score >= config.minScore && !result.refs.some((ref) => ref.string === result.string) && !hasBannedWord
+      result.score >= config.minScore && !result.refs.some((ref) => ref.string === result.string) && 
+      !hasBannedWord && !mentionsSelf && isValidSentence(result.string)
     );
   },
   maxTries: config.maxTries,

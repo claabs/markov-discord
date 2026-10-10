@@ -599,6 +599,15 @@ async function generateResponse(
       startSeed: startSeed
     };
 
+    if (startSeed && startSeed.split(/\s+/).length < config.stateSize) {
+      return {
+        error: {
+          content: `\n\`\`\`\nERROR: ${startSeed} should be ${config.stateSize} words long\n\`\`\``,
+          allowedMentions: { repliedUser: false, parse: [] },
+        },
+      };
+    }
+
     const response = await markov.generate<MarkovDataCustom>(generationConfig);
 
     L.info({ string: response.string }, 'Generated response text');
@@ -903,9 +912,9 @@ client.on('interactionCreate', async (interaction) => {
       await interaction.reply(inviteMessage());
     } else if (interaction.commandName === messageCommand.name) {
       await interaction.deferReply();
-      const tts = interaction.options.getBoolean('tts') || false;
-      const debug = interaction.options.getBoolean('debug') || false;
-      const startSeed = interaction.options.getString('seed')?.trim() || undefined;
+      const tts = interaction.options.getBoolean('tts') ?? false;
+      const debug = interaction.options.getBoolean('debug') ?? false;
+      const startSeed = interaction.options.getString('seed')?.trim() ?? undefined;
       const generatedResponse = await generateResponse(interaction, { tts, debug, startSeed });
 
       /**

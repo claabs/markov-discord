@@ -27,6 +27,7 @@ import {
 } from './deploy-commands';
 import { getRandomElement, getVersion, packageJson } from './util';
 import ormconfig from './ormconfig';
+import nlp from 'compromise';
 
 interface MarkovDataCustom {
   attachments: string[];
@@ -73,10 +74,40 @@ const markovOpts: MarkovConstructorOptions = {
   stateSize: config.stateSize,
 };
 
+function normalizeWord(str: string) {
+  // [^\w\s] matches anything that is NOT a word character or whitespace
+  return str.replace(/[^\w\s]/g, '').normalize().toLowerCase();
+}
+
+
+function isValidSentence(text: string): boolean {
+  const doc = nlp(text);
+  const lastWord = doc.terms().last();
+
+  // Guard against empty strings or text with no words
+  if (!lastWord.found) {
+    return false;
+  }
+
+  // Compromise allows you to pass a comma-separated list of tags to .has()
+  if (lastWord.has('#Preposition, #Conjunction, #Determiner, #Possessive')) {
+    return false;
+  }
+
+  return true;
+}
+
+
 const markovGenerateOptions: MarkovGenerateOptions<MarkovDataCustom> = {
   filter: (result): boolean => {
+    const bannedSet = new Set(config.bannedWords.map((word) => normalizeWord(word)));
+    const hasBannedWord = result.string.trim().split(/\s+/).some((word) => bannedSet.has(normalizeWord(word)));
+    const mentionsSelf = result.string.includes(client.user.id);
+
+  
     return (
-      result.score >= config.minScore && !result.refs.some((ref) => ref.string === result.string)
+      result.score >= config.minScore && !result.refs.some((ref) => ref.string === result.string) && 
+      !hasBannedWord && !mentionsSelf && isValidSentence(result.string)
     );
   },
   maxTries: config.maxTries,
@@ -563,18 +594,33 @@ async function generateResponse(
   const markov = await getMarkovByGuildId(interaction.guildId);
 
   try {
-    markovGenerateOptions.startSeed = startSeed;
-    const response = await markov.generate<MarkovDataCustom>(markovGenerateOptions);
+    const generationConfig = {
+      ...markovGenerateOptions,
+      startSeed: startSeed
+    };
+
+    if (startSeed && startSeed.split(/\s+/).length < config.stateSize) {
+      return {
+        error: {
+          content: `\n\`\`\`\nERROR: ${startSeed} should be ${config.stateSize} words long\n\`\`\``,
+          allowedMentions: { repliedUser: false, parse: [] },
+        },
+      };
+    }
+
+    const response = await markov.generate<MarkovDataCustom>(generationConfig);
+
     L.info({ string: response.string }, 'Generated response text');
     L.debug({ response }, 'Generated response object');
     const messageOpts: AgnosticReplyOptions = {
       tts,
       allowedMentions: { repliedUser: false, parse: [] },
     };
+    const sendAttachment = Math.random() < config.attachmentChance;
     const attachmentUrls = response.refs
       .filter((ref) => ref.custom && 'attachments' in ref.custom)
       .flatMap((ref) => (ref.custom as MarkovDataCustom).attachments);
-    if (attachmentUrls.length > 0) {
+    if (attachmentUrls.length > 0 && sendAttachment) {
       const randomRefAttachment = getRandomElement(attachmentUrls);
       const refreshedUrl = await refreshCdnUrl(randomRefAttachment);
       messageOpts.files = [refreshedUrl];
@@ -588,7 +634,7 @@ async function generateResponse(
         .limit(1)
         .getOne();
       const randomMessageAttachmentUrls = randomMessage?.custom?.attachments;
-      if (randomMessageAttachmentUrls?.length) {
+      if (randomMessageAttachmentUrls?.length && sendAttachment) {
         const attachmentUrl = getRandomElement(randomMessageAttachmentUrls);
         const refreshedUrl = await refreshCdnUrl(attachmentUrl);
         messageOpts.files = [{ attachment: refreshedUrl }];
@@ -813,6 +859,13 @@ client.on('messageCreate', async (message) => {
         L.debug('Listening');
         const markov = await getMarkovByGuildId(message.channel.guildId);
         await markov.addData([messageToData(message)]);
+
+        if (!message.mentions.has(client.user!) && Math.random() < config.randomResponseChance) {
+          L.debug('Randomly responding to message');
+          const startSeed = message.content.replace(/<@!\d+>/g, '').trim();
+          const generatedResponse = await generateResponse(message, { startSeed });
+          await handleResponseMessage(generatedResponse, message);
+        }
       }
     }
   }
@@ -859,9 +912,9 @@ client.on('interactionCreate', async (interaction) => {
       await interaction.reply(inviteMessage());
     } else if (interaction.commandName === messageCommand.name) {
       await interaction.deferReply();
-      const tts = interaction.options.getBoolean('tts') || false;
-      const debug = interaction.options.getBoolean('debug') || false;
-      const startSeed = interaction.options.getString('seed')?.trim() || undefined;
+      const tts = interaction.options.getBoolean('tts') ?? false;
+      const debug = interaction.options.getBoolean('debug') ?? false;
+      const startSeed = interaction.options.getString('seed')?.trim() ?? undefined;
       const generatedResponse = await generateResponse(interaction, { tts, debug, startSeed });
 
       /**

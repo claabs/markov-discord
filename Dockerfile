@@ -14,7 +14,8 @@ COPY package*.json ./
 FROM base AS buildbase
 
 # Install build tools for bufferutils
-RUN apk add --no-cache make gcc g++ python3
+RUN --mount=type=cache,target=/var/cache/apk \
+    apk add --update-cache make gcc g++ python3
 
 ############
 # PROD DEPS
@@ -23,7 +24,8 @@ RUN apk add --no-cache make gcc g++ python3
 FROM buildbase AS proddeps
 
 # Install prod deps only
-RUN npm ci --omit=dev
+RUN --mount=type=cache,target=/root/.npm \
+    npm ci --omit=dev
 
 ########
 # BUILD
@@ -34,7 +36,8 @@ FROM buildbase AS build
 COPY tsconfig.json ./
 
 # Add dev deps
-RUN npm ci
+RUN --mount=type=cache,target=/root/.npm \
+    npm ci
 
 # Copy source code
 COPY src src

@@ -1,10 +1,16 @@
 name: MultiArchDockerBuild
 
+permissions:
+  packages: write
+
 on:
   push:
     branches:
       - master
       - develop
+  schedule:
+    - cron: "0 6 * * 1"
+  workflow_dispatch:
 
 jobs:
   build_multi_arch_image:
@@ -48,8 +54,8 @@ jobs:
           platforms: linux/amd64,linux/arm64
           build-args: |
             COMMIT_SHA=${{ github.sha }}
-          cache-from: type=gha,scope=${{ github.workflow }}
-          cache-to: type=gha,mode=max,scope=${{ github.workflow }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
 
       - name: Build and push dev
         if: ${{ github.ref == 'refs/heads/develop' }}
@@ -63,5 +69,5 @@ jobs:
           platforms: linux/amd64
           build-args: |
             COMMIT_SHA=${{ github.sha }}
-          cache-from: type=gha,scope=${{ github.workflow }}
-          cache-to: type=gha,mode=max,scope=${{ github.workflow }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
